@@ -1,0 +1,25 @@
+import mongoose, { Schema, Document } from "mongoose";
+
+export interface Question extends Document {
+  contestId: string;
+  name: string;
+  questionId: string;
+  index: string;
+  rating: number;
+  tags: string[];
+}
+
+const QuestionSchema: Schema = new Schema({
+  contestId: { type: String, required: true },
+  name: { type: String, required: true },
+  questionId: { type: String, required: true, unique: true },
+  index: { type: String, required: true },
+  rating: { type: Number, default: 0 },
+  tags: { type: [String], default: [] },
+});
+
+const QuestionModel =
+  (mongoose.models.Question as mongoose.Model<Question>) ||
+  mongoose.model<Question>("Question", QuestionSchema);
+
+export default QuestionModel;
