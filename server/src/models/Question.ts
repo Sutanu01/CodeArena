@@ -14,7 +14,7 @@ const QuestionSchema: Schema = new Schema({
   name: { type: String, required: true },
   questionId: { type: String, required: true, unique: true },
   index: { type: String, required: true },
-  rating: { type: Number, default: 0 },
+  rating: { type: Number, default: 9999 },
   tags: { type: [String], default: [] },
 });
 

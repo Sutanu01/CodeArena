@@ -92,7 +92,7 @@ const updateUser = TryCatch(
                 maxRating: codeforces.maxRating || existingUser.codeforces_info?.maxRating,
                 rank: codeforces.rank || existingUser.codeforces_info?.rank,
                 maxRank: codeforces.maxRank || existingUser.codeforces_info?.maxRank,
-                submissions: codeforces.submissions || existingUser.codeforces_info?.submissions,
+                solved_ques: codeforces.solved_ques || existingUser.codeforces_info?.solved_ques,
                 rating_changes: codeforces.rating_changes || existingUser.codeforces_info?.rating_changes,
             };
         }

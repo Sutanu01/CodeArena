@@ -7,13 +7,13 @@ export interface User extends Document {
   email: string;
   password: string;
   avatar?: string;
-  codeforces_info?: {
+  codeforces_info: {
     username: string;
     rating: number;
     maxRating: number;
     rank: string;
     maxRank: string;
-    submissions: Array<Question>;
+    solved_ques: Array<Question>;
     rating_changes: Array<Number>;
   };
   total_matches: number;
@@ -35,7 +35,7 @@ const UserSchema: Schema = new Schema({
     maxRating: { type: Number, default: 0 },
     rank: { type: String, default: null },
     maxRank: { type: String, default: null },
-    submissions: [{ type: Schema.Types.ObjectId, ref: "Question" }],
+    solved_ques: [{ type: Schema.Types.ObjectId, ref: "Question" }],
     rating_changes: [{ type: Number }],
   },
   total_matches: { type: Number, default: 0 },

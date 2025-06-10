@@ -1,1 +1,3 @@
-// (e.g - >  const START_CONTEST = 'START_CONTEST'  aise events dalna hai idhr)
+
+export const START_CONTEST = 'START_CONTEST';
+export const END_CONTEST = 'END_CONTEST';
