@@ -314,7 +314,7 @@ export default function MatchingPage() {
           </Button>
         </CardContent>
       </Card>
-      {/* Raining Characters */}
+      {/* Raining Characters
       {characters.map((char, index) => (
         <span
           key={index}
@@ -340,7 +340,7 @@ export default function MatchingPage() {
         >
           {char.char}
         </span>
-      ))}
+      ))} */}
       <style jsx global>{`
         .dud {
           color: #ee31ff;

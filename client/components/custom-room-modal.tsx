@@ -76,7 +76,7 @@ export function CustomRoomModal({ isOpen, onClose }: CustomRoomModalProps) {
     setTimeout(() => {
       router.push(`/room?custom=true&code=${roomCode}`)
       onClose()
-    }, 5000)
+    }, 1000)
   }
 
   const toggleQuestionType = (type: string) => {

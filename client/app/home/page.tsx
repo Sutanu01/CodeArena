@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button"
 import { CustomRoomModal } from "@/components/custom-room-modal"
 import { Swords, Plus, Calendar, Puzzle, Clock, Users, Trophy, Target } from "lucide-react"
 import Link from "next/link"
+import { OneVsOneModal } from "@/components/custom-1v1-modal"
 
 export default function HomePage() {
   const [isCustomRoomOpen, setIsCustomRoomOpen] = useState(false)
+  const [is1v1Mode,set1v1Mode] = useState(false)
 
   // Generate consistent activity data
   const activityData = Array.from({ length: 35 }, (_, i) => {
@@ -79,9 +81,16 @@ export default function HomePage() {
               </div>
             </CardHeader>
             <CardContent>
-              <Link href="/matching">
+              {/* <Link href="/matching">
                 <Button className="w-full group-hover:bg-red-600 transition-colors">Start Battle</Button>
-              </Link>
+              </Link> */}
+              <Button
+                variant="outline"
+                className="w-full group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 transition-colors"
+                onClick={() => set1v1Mode(true)}
+              >
+                Start Battle
+              </Button>
             </CardContent>
           </Card>
 
@@ -206,7 +215,7 @@ export default function HomePage() {
           </Card>
         </div>
       </div>
-
+      <OneVsOneModal isOpen={is1v1Mode} onClose={()=>set1v1Mode(false)}/>
       <CustomRoomModal isOpen={isCustomRoomOpen} onClose={() => setIsCustomRoomOpen(false)} />
     </div>
   )

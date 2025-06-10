@@ -1,30 +1,32 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Clock, Trophy, Play, CheckCircle } from "lucide-react"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Clock, Trophy, Play, CheckCircle, Router } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function RoomPage() {
-  const [timeLeft, setTimeLeft] = useState(1800) // 30 minutes
-  const [activeTab, setActiveTab] = useState("problem")
+  const [timeLeft, setTimeLeft] = useState(1800); // 30 minutes
+  const [activeTab, setActiveTab] = useState("problem");
+  const router = useRouter();
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setTimeLeft((prev) => Math.max(0, prev - 1))
-    }, 1000)
+      setTimeLeft((prev) => Math.max(0, prev - 1));
+    }, 1000);
 
-    return () => clearInterval(timer)
-  }, [])
+    return () => clearInterval(timer);
+  }, []);
 
   const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, "0")}`
-  }
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -36,7 +38,11 @@ export default function RoomPage() {
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <Clock className="h-4 w-4 text-muted-foreground" />
-                <span className={`font-mono text-lg ${timeLeft < 300 ? "text-red-500" : ""}`}>
+                <span
+                  className={`font-mono text-lg ${
+                    timeLeft < 300 ? "text-red-500" : ""
+                  }`}
+                >
                   {formatTime(timeLeft)}
                 </span>
               </div>
@@ -79,7 +85,7 @@ export default function RoomPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function PlayersSection({ timeLeft }: { timeLeft: number }) {
@@ -88,7 +94,9 @@ function PlayersSection({ timeLeft }: { timeLeft: number }) {
       {/* You */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium text-muted-foreground">YOU</CardTitle>
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            YOU
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-center space-x-3">
@@ -97,7 +105,7 @@ function PlayersSection({ timeLeft }: { timeLeft: number }) {
               <AvatarFallback>JD</AvatarFallback>
             </Avatar>
             <div>
-              <div className="font-medium">John Doe</div>
+              <div className="font-medium">Satu ka Pakora</div>
               <div className="text-sm text-muted-foreground flex items-center">
                 <Trophy className="h-3 w-3 mr-1" />
                 1547
@@ -114,7 +122,9 @@ function PlayersSection({ timeLeft }: { timeLeft: number }) {
       {/* Opponent */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium text-muted-foreground">OPPONENT</CardTitle>
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            OPPONENT
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-center space-x-3">
@@ -123,10 +133,10 @@ function PlayersSection({ timeLeft }: { timeLeft: number }) {
               <AvatarFallback>AM</AvatarFallback>
             </Avatar>
             <div>
-              <div className="font-medium">Alice_Master</div>
+              <div className="font-medium">Gojo Satoru</div>
               <div className="text-sm text-muted-foreground flex items-center">
                 <Trophy className="h-3 w-3 mr-1" />
-                1623
+                16230
               </div>
             </div>
           </div>
@@ -140,7 +150,9 @@ function PlayersSection({ timeLeft }: { timeLeft: number }) {
       {/* Match Info */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium text-muted-foreground">MATCH INFO</CardTitle>
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            MATCH INFO
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <div className="flex justify-between">
@@ -149,7 +161,7 @@ function PlayersSection({ timeLeft }: { timeLeft: number }) {
           </div>
           <div className="flex justify-between">
             <span>Language:</span>
-            <span>Python</span>
+            <span>Doesn't Matter</span>
           </div>
           <div className="flex justify-between">
             <span>Time Limit:</span>
@@ -158,10 +170,15 @@ function PlayersSection({ timeLeft }: { timeLeft: number }) {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
 function ProblemSection() {
+  const handleGotoQuestion = () => {
+    //baad mai asli maal pani se replace karwa denege from db
+    const externalLink = "https://codeforces.com/problemset/problem/1903/A";
+    window.open(externalLink, "_blank");
+  };
   return (
     <div className="space-y-6">
       {/* Problem Statement */}
@@ -172,12 +189,13 @@ function ProblemSection() {
         <CardContent className="space-y-4">
           <div className="prose dark:prose-invert max-w-none">
             <p>
-              Given an array of integers <code>nums</code> and an integer <code>target</code>, return indices of the two
-              numbers such that they add up to <code>target</code>.
+              Given an array of integers <code>nums</code> and an integer{" "}
+              <code>target</code>, return indices of the two numbers such that
+              they add up to <code>target</code>.
             </p>
             <p>
-              You may assume that each input would have exactly one solution, and you may not use the same element
-              twice.
+              You may assume that each input would have exactly one solution,
+              and you may not use the same element twice.
             </p>
 
             <h4>Example 1:</h4>
@@ -201,32 +219,20 @@ Explanation: Because nums[0] + nums[1] == 9, we return [0, 1].`}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Code Editor</CardTitle>
+            <CardTitle>Code Forces Sumbission</CardTitle>
             <div className="flex space-x-2">
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={handleGotoQuestion}>
                 <Play className="h-4 w-4 mr-2" />
-                Run
+                Go to Question
               </Button>
               <Button size="sm">
                 <CheckCircle className="h-4 w-4 mr-2" />
-                Submit
+                Refresh
               </Button>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="bg-slate-950 text-green-400 p-4 rounded-md font-mono text-sm min-h-[300px]">
-            <div className="text-gray-500"># Write your solution here</div>
-            <div className="text-blue-400">def</div> <span className="text-yellow-400">twoSum</span>(
-            <span className="text-orange-400">nums, target</span>):
-            <br />
-            <span className="ml-4 text-gray-500"># Your code here</span>
-            <br />
-            <span className="ml-4 text-purple-400">pass</span>
-            <div className="mt-4 w-2 h-5 bg-green-400 animate-pulse"></div>
-          </div>
-        </CardContent>
       </Card>
     </div>
-  )
+  );
 }
