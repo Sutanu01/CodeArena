@@ -10,9 +10,9 @@ import { Clock, Trophy, Play, CheckCircle, Router } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function RoomPage() {
+  const router = useRouter();
   const [timeLeft, setTimeLeft] = useState(1800); // 30 minutes
   const [activeTab, setActiveTab] = useState("problem");
-  const router = useRouter();
 
   useEffect(() => {
     const timer = setInterval(() => {
