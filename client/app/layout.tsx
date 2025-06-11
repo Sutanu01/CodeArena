@@ -25,7 +25,7 @@ export default function RootLayout({
           attribute="class"
           defaultTheme="system"
           enableSystem
-          disableTransitionOnChange={false}
+          disableTransitionOnChange={true}
           storageKey="Code Arena-theme"
         >
           {children}

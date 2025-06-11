@@ -5,6 +5,6 @@ export const ErrorHandler = (err:any, req:Request, res:Response, next:NextFuncti
   res.status(statusCode);
   console.error(err);
   res.json({
-    message:"Internal Server Error",
+    message:"Are Server ki to Ma Chud gayi Bhai",
   });
 }

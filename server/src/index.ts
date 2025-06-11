@@ -14,6 +14,7 @@ import UserRoute from "./routes/UserRoute.js"
 import CodeForcesRoute from "./routes/CodeForcesRoute.js"
 import Features from "./routes/Features.js";
 import { handleClerkUserChange } from "./controllers/user.js";
+import { verifyWebhook } from "@clerk/express/webhooks";
 
 const app = express();
 const server = createServer(app);
@@ -22,26 +23,19 @@ const io = new Server(server, {
 });
 
 app.use(cors(corsOptions as CorsOptions));
-app.use(clerkMiddleware({
-    publishableKey: process.env.CLERK_PUBLISHABLE_KEY || "",
-    secretKey: process.env.CLERK_SECRET_KEY || "",
-}));
 app.use(ErrorHandler);
 app.post(
-    "/api/webhook/clerk",
+    "/api/webhooks/clerk",
     express.raw({ type: "application/json" }),
     handleClerkUserChange
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-
-
 await connectToDatabase();
 fetchAndStoreQuestionsWeekly();
 
-socketSetup(io);
 
+socketSetup(io);
 
 app.get('/', (req, res) => {
     res.send("Hello World!");

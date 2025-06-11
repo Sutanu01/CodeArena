@@ -50,8 +50,10 @@ export function OneVsOneModal({ isOpen, onClose }: OneVsOneModalProps) {
   const router = useRouter();
 
   const handleStartMatching = async () => {
-    const modeDuration : number[]= [10,25,40];
-    const mode = useRandomMode ? modeDuration[Math.floor(Math.random() * modeDuration.length)] : selectedMode;
+    const modeDuration: number[] = [10, 25, 40];
+    const mode = useRandomMode 
+      ? modeDuration[Math.floor(Math.random() * modeDuration.length)] 
+      : selectedMode;
     if (!mode) return;
 
     setIsMatching(true);
@@ -99,23 +101,25 @@ export function OneVsOneModal({ isOpen, onClose }: OneVsOneModalProps) {
       isOpen={isOpen}
       onClose={handleClose}
       title="1v1 Coding Battle"
-      className="max-w-2xl"
+      className="max-w-lg mx-2 sm:mx-4 max-h-[90vh] overflow-y-auto"
     >
-      <div className="p-6 space-y-6">
+      <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
+        {/* Header Section */}
         <div className="text-center space-y-2">
-          <div className="w-16 h-16 mx-auto bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-            <Users className="h-8 w-8 text-white" />
+          <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+            <Users className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
           </div>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-muted-foreground text-xs sm:text-sm px-2">
             Choose your battle duration and face off against a worthy opponent
           </p>
         </div>
 
+        {/* Game Mode Selection */}
         <div className="space-y-3">
-          <Label className="text-base font-medium">
+          <Label className="text-sm sm:text-base font-medium">
             Select Battle Duration
           </Label>
-          <div className="grid gap-3">
+          <div className="grid gap-2 sm:gap-3">
             {gameModes.map((mode) => {
               const IconComponent = mode.icon;
               const isSelected =
@@ -133,27 +137,29 @@ export function OneVsOneModal({ isOpen, onClose }: OneVsOneModalProps) {
                   }`}
                   onClick={() => handleModeSelect(mode.duration)}
                 >
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-4">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex items-center space-x-3">
                       <div className="flex-shrink-0">
                         <div
-                          className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                          className={`w-8 h-8 sm:w-12 sm:h-12 rounded-full flex items-center justify-center ${
                             isSelected
                               ? "bg-primary text-primary-foreground"
                               : "bg-muted"
                           }`}
                         >
-                          <IconComponent className="h-6 w-6" />
+                          <IconComponent className="h-4 w-4 sm:h-6 sm:w-6" />
                         </div>
                       </div>
-                      <div className="flex-grow">
-                        <div className="flex items-center space-x-3 mb-1">
-                          <h3 className="font-semibold">{mode.label}</h3>
-                          <Badge className={mode.color}>
-                            {mode.duration} mins
+                      <div className="flex-grow min-w-0">
+                        <div className="flex items-center space-x-2 sm:space-x-3 mb-1">
+                          <h3 className="font-semibold text-sm sm:text-base truncate">
+                            {mode.label}
+                          </h3>
+                          <Badge className={`${mode.color} text-xs shrink-0`}>
+                            {mode.duration}m
                           </Badge>
                         </div>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">
                           {mode.description}
                         </p>
                       </div>
@@ -165,8 +171,9 @@ export function OneVsOneModal({ isOpen, onClose }: OneVsOneModalProps) {
           </div>
         </div>
 
+        {/* Random Mode Section */}
         <div className="space-y-3">
-          <Label className="text-base font-medium">Or Try Your Luck</Label>
+          <Label className="text-sm sm:text-base font-medium">Or Try Your Luck</Label>
           <Card
             className={`cursor-pointer transition-all hover:shadow-md border-dashed ${
               useRandomMode
@@ -175,29 +182,30 @@ export function OneVsOneModal({ isOpen, onClose }: OneVsOneModalProps) {
             }`}
             onClick={handleRandomToggle}
           >
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-4">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center space-x-3">
                 <div className="flex-shrink-0">
                   <div
-                    className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                    className={`w-8 h-8 sm:w-12 sm:h-12 rounded-full flex items-center justify-center ${
                       useRandomMode
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted"
                     }`}
                   >
-                    <Shuffle className="h-6 w-6" />
+                    <Shuffle className="h-4 w-4 sm:h-6 sm:w-6" />
                   </div>
                 </div>
-                <div className="flex-grow">
-                  <div className="flex items-center space-x-3 mb-1">
-                    <h3 className="font-semibold">Random Challenge</h3>
-                    <Badge variant="outline" className="border-dashed">
+                <div className="flex-grow min-w-0">
+                  <div className="flex items-center space-x-2 sm:space-x-3 mb-1">
+                    <h3 className="font-semibold text-sm sm:text-base">
+                      Random Challenge
+                    </h3>
+                    <Badge variant="outline" className="border-dashed text-xs shrink-0">
                       Surprise!
                     </Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Let fate decide your battle duration for an unpredictable
-                    challenge
+                  <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">
+                    Let fate decide your battle duration for an unpredictable challenge
                   </p>
                 </div>
               </div>
@@ -205,24 +213,27 @@ export function OneVsOneModal({ isOpen, onClose }: OneVsOneModalProps) {
           </Card>
         </div>
 
+        {/* Selected Mode Summary */}
         {(selectedMode || useRandomMode) && (
-          <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-            <div className="flex items-center justify-between text-sm">
+          <div className="bg-muted/50 rounded-lg p-3 sm:p-4 space-y-2">
+            <div className="flex items-center justify-between text-xs sm:text-sm">
               <span className="text-muted-foreground">Selected Mode:</span>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 min-w-0">
                 {useRandomMode ? (
                   <>
-                    <Shuffle className="h-4 w-4" />
-                    <span className="font-medium">Random Challenge</span>
+                    <Shuffle className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+                    <span className="font-medium text-xs sm:text-sm truncate">
+                      Random Challenge
+                    </span>
                   </>
                 ) : selectedModeData ? (
                   <>
-                    <selectedModeData.icon className="h-4 w-4" />
-                    <span className="font-medium">
+                    <selectedModeData.icon className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+                    <span className="font-medium text-xs sm:text-sm truncate">
                       {selectedModeData.label}
                     </span>
-                    <Badge className={selectedModeData.color}>
-                      {selectedMode} mins
+                    <Badge className={`${selectedModeData.color} text-xs shrink-0`}>
+                      {selectedMode}m
                     </Badge>
                   </>
                 ) : null}
@@ -231,11 +242,12 @@ export function OneVsOneModal({ isOpen, onClose }: OneVsOneModalProps) {
           </div>
         )}
 
-        <div className="flex space-x-3 pt-4 border-t">
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 pt-4 border-t">
           <Button
             variant="outline"
             onClick={handleClose}
-            className="flex-1"
+            className="w-full sm:flex-1 text-sm"
             disabled={isMatching}
           >
             Cancel
@@ -243,17 +255,17 @@ export function OneVsOneModal({ isOpen, onClose }: OneVsOneModalProps) {
           <Button
             onClick={handleStartMatching}
             disabled={!canStart || isMatching}
-            className="flex-1"
+            className="w-full sm:flex-1 text-sm"
           >
             {isMatching ? (
               <>
-                <Clock className="mr-2 h-4 w-4 animate-spin" />
-                Finding Opponent...
+                <Clock className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                <span className="truncate">Finding Opponent...</span>
               </>
             ) : (
               <>
-                <Users className="mr-2 h-4 w-4" />
-                Start Matching
+                <Users className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="truncate">Start Matching</span>
               </>
             )}
           </Button>
