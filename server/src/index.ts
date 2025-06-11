@@ -13,21 +13,27 @@ import { connectToDatabase } from "./utils/db.js";
 import UserRoute from "./routes/UserRoute.js"
 import CodeForcesRoute from "./routes/CodeForcesRoute.js"
 import Features from "./routes/Features.js";
+import { handleClerkUserChange } from "./controllers/user.js";
 
 const app = express();
 const server = createServer(app);
 const io = new Server(server, {
     cors:corsOptions as CorsOptions
 });
-app.use(cors(corsOptions as CorsOptions));
-app.use(express.json());
-app.use(clerkMiddleware({
-     publishableKey: process.env.CLERK_PUBLISHABLE_KEY || "",
-     secretKey: process.env.CLERK_SECRET_KEY || "",
-}));
-app.use(express.urlencoded({ extended: true }));
-app.use(ErrorHandler);
 
+app.use(cors(corsOptions as CorsOptions));
+app.use(clerkMiddleware({
+    publishableKey: process.env.CLERK_PUBLISHABLE_KEY || "",
+    secretKey: process.env.CLERK_SECRET_KEY || "",
+}));
+app.use(ErrorHandler);
+app.post(
+    "/api/webhook/clerk",
+    express.raw({ type: "application/json" }),
+    handleClerkUserChange
+);
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 
 

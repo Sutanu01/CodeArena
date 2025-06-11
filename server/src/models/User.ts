@@ -5,7 +5,6 @@ export interface User extends Document {
   username: string;
   clerkId: string;
   email: string;
-  password: string;
   avatar?: string;
   codeforces_info: {
     username: string;
@@ -27,7 +26,6 @@ const UserSchema: Schema = new Schema({
   username: { type: String, required: true, unique: true },
   clerkId: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
   avatar: { type: String, default: null },
   codeforces_info: {
     username: { type: String, default: null },
