@@ -1,20 +1,18 @@
-import dotenv from "dotenv"
-dotenv.config();
-import { clerkMiddleware } from "@clerk/express";
-import { corsOptions } from "./constants/configs.js";
-import { ErrorHandler } from "./middlewares/error.js";
-import { fetchAndStoreQuestionsWeekly } from "./utils/utility.js";
-import express from "express"
+import cors, { CorsOptions } from "cors";
+import dotenv from "dotenv";
+import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
-import { socketSetup } from "./socket.js";
-import cors,{CorsOptions} from "cors";
-import { connectToDatabase } from "./utils/db.js";
-import UserRoute from "./routes/UserRoute.js"
-import CodeForcesRoute from "./routes/CodeForcesRoute.js"
-import Features from "./routes/Features.js";
+import { corsOptions } from "./constants/configs.js";
 import { handleClerkUserChange } from "./controllers/user.js";
-import { verifyWebhook } from "@clerk/express/webhooks";
+import { ErrorHandler } from "./middlewares/error.js";
+import CodeForcesRoute from "./routes/CodeForcesRoute.js";
+import Features from "./routes/Features.js";
+import UserRoute from "./routes/UserRoute.js";
+import { socketSetup } from "./socket.js";
+import { connectToDatabase } from "./utils/db.js";
+import { fetchAndStoreQuestionsWeekly } from "./utils/utility.js";
+dotenv.config();
 
 const app = express();
 const server = createServer(app);
@@ -31,6 +29,9 @@ app.post(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+
+
 await connectToDatabase();
 fetchAndStoreQuestionsWeekly();
 
