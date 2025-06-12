@@ -41,6 +41,7 @@ const getLeaderboardInfo = TryCatch(
       totalPages,
       currentPage: pageNumber,
     });
+    return;
   }
 );
 
@@ -68,6 +69,7 @@ const getDailyStreakData = TryCatch(
       res,
       data
     );
+    return;
   }
 );
 
@@ -93,6 +95,7 @@ const dailyUpdate = TryCatch(
       maxStreak: user.maxStreak,
       login_data: user.login_data,
     });
+    return;
   }
 );
 

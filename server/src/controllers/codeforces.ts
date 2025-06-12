@@ -50,6 +50,7 @@ const getSubmissionStatus = TryCatch(async (req: Request, res: Response): Promis
     }));
 
   sendResponse(200, true, "Submission status fetched successfully", res, { submissions });
+  return;
 });
 
 const updateCodeforcesInfo = TryCatch(async (req: Request, res: Response): Promise<void> => {
@@ -131,6 +132,7 @@ const updateCodeforcesInfo = TryCatch(async (req: Request, res: Response): Promi
 
   await user.save();
   sendResponse(200, true, "Codeforces info updated successfully", res);
+  return;
 });
 
 const getUnsolvedQuestionLink = TryCatch(async (req: Request, res: Response): Promise<void> => {
@@ -180,6 +182,7 @@ const getUnsolvedQuestionLink = TryCatch(async (req: Request, res: Response): Pr
     index: question.index,
     question_link: `https://codeforces.com/problemset/problem/${question.contestId}/${question.index}`,
   });
+  return;
 });
 
 
