@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface Question extends Document {
-  contestId: string;
+  contestId: number;
   name: string;
   questionId: string;
   index: string;
@@ -10,7 +10,7 @@ export interface Question extends Document {
 }
 
 const QuestionSchema: Schema = new Schema({
-  contestId: { type: String, required: true },
+  contestId: { type: Number, required: true },
   name: { type: String, required: true },
   questionId: { type: String, required: true, unique: true },
   index: { type: String, required: true },

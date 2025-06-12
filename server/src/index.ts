@@ -21,7 +21,6 @@ const io = new Server(server, {
 });
 
 app.use(cors(corsOptions as CorsOptions));
-app.use(ErrorHandler);
 app.post(
     "/api/webhooks/clerk",
     express.raw({ type: "application/json" }),
@@ -29,6 +28,7 @@ app.post(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(ErrorHandler);
 
 
 

@@ -6,10 +6,10 @@ import {
 } from "../controllers/codeforces.js";
 const router = express.Router();
 
-router.get("/get-status", getSubmissionStatus);
+router.post("/get-status", getSubmissionStatus);
 
 router.post("/update-info", updateCodeforcesInfo);
 
-router.get("/get-contest-question", getUnsolvedQuestionLink);
+router.post("/get-contest-question", getUnsolvedQuestionLink);
 
 export default router;

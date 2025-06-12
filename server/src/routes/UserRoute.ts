@@ -1,5 +1,5 @@
 import express from "express";
-import { getUserData, handleClerkUserChange } from "../controllers/user.js";
+import { getUserData } from "../controllers/user.js";
 
 const router = express.Router();
 

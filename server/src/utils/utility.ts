@@ -9,7 +9,7 @@ const fetchAndStoreQuestions = async () => {
     const problems = data.result.problems;
     for (const problem of problems) {
       const question = {
-        contestId: problem.contestId.toString(),
+        contestId: problem.contestId,
         name: problem.name,
         questionId: `${problem.contestId}${problem.index}`,
         index: problem.index,
