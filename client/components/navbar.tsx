@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { ProfileDropdown } from "@/components/profile-dropdown"
 import { Menu, X, Code2 } from "lucide-react"
+import NavbarLinks from "./Navbar-Links"
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
@@ -19,22 +20,7 @@ export function Navbar() {
         </Link>
 
         {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center space-x-6">
-          <Link href="/home" className="text-sm font-medium hover:text-primary transition-colors">
-            Dashboard
-          </Link>
-          <Link href="/leaderboard" className="text-sm font-medium hover:text-primary transition-colors">
-            Leaderboard
-          </Link>
-          <Link href="/practice" className="text-sm font-medium hover:text-primary transition-colors">
-            Practice
-          </Link>
-        </div>
-
-        <div className="hidden md:flex items-center space-x-4">
-          <ThemeToggle />
-          <ProfileDropdown />
-        </div>
+        <NavbarLinks/>
 
         {/* Mobile Menu Button */}
         <div className="md:hidden flex items-center space-x-2">

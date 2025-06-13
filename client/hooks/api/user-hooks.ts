@@ -1,3 +1,5 @@
+import { count } from "console";
+
 const server = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export type responseType = {
@@ -9,17 +11,19 @@ export type responseType = {
 
 const useVerifyCodeforcesHandle = async ({userId,codeforcesId}:{userId:string,codeforcesId:string}): Promise<responseType> => {
     const response  = await fetch(`${server}/api/cf/get-status`,{
-        method:"GET",
+        method:"POST",
         headers: {
             "Content-Type": "application/json",
         },
         body: JSON.stringify({
-             userId,codeforcesId, contestId:1538, index:"D" 
+             userId,codeforcesId, contestId:1000, index:"G" , count:1
         }),
     })
     const data =await response.json();
     const submission = data.data?.submissions?.[0];
-    if(!submission || submission !== "COMPILATION_ERROR") {
+    console.log(submission)
+    if(!submission || submission.verdict
+     !== 'COMPILATION_ERROR') {
         return {
             success: false,
             isError: true,
