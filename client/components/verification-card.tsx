@@ -17,8 +17,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useVerifyCodeforcesHandle } from "@/hooks/api/user-hooks";
-import { setCodeforcesVerified } from "@/redux/reducers/user";
-import { useDispatch } from "react-redux";
+import { setCodeforcesVerified,setCodeforcesHandle } from "@/redux/reducers/user";
+import { useDispatch,useSelector } from "react-redux";
+import { RootState } from "@/redux/store";
 
 export function CodeforcesVerificationCard() {
   const [isOpen, setIsOpen] = useState(false);
@@ -26,9 +27,10 @@ export function CodeforcesVerificationCard() {
   const [handle, setHandle] = useState("");
   const [countdown, setCountdown] = useState(120); // seconds
   const [verified, setVerified] = useState<boolean | null>(null);
+  const { verify,loading,result }=useVerifyCodeforcesHandle();
   const timerRef = useRef<number>(0);
   const dispatch = useDispatch();
-
+  const {UserData,isCodeforcesVerified} = useSelector((state:RootState) => state.user);
   useEffect(() => {
     if (step === 2) {
       setCountdown(120);
@@ -62,15 +64,20 @@ export function CodeforcesVerificationCard() {
   };
 
   const finishVerification = async () => {
-    //dmmy id use kar rha hu bro
-    const resp = await useVerifyCodeforcesHandle({
-      userId: "dummy-user-id",
+    const resp = await verify({
+      userId:UserData?._id as string,
       codeforcesId: handle,
     });
-    setVerified(resp.success);
     if (resp.success) {
+      dispatch(setCodeforcesHandle(handle));
+      setVerified(resp.success);
       dispatch(setCodeforcesVerified(true));
       setStep(3);
+    }
+    else {
+      setVerified(false);
+      setStep(3);
+      console.error("Verification failed:", result?.message || "Unknown error");
     }
   };
 

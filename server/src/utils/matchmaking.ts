@@ -2,7 +2,7 @@ export type Player = {
   id: string;
   rating: number;
   joinTime: number;
-  queueType: '10min' | '20min' | '30min';
+  queueType: '10min' | '25min' | '40min';
 };
 
 export type Match = [Player, Player];

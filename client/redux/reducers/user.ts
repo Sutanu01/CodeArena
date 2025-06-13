@@ -1,7 +1,8 @@
 import { createSlice } from "@reduxjs/toolkit";
-
+import {User} from "./schemas"
+//please put these types in a separate file
 const initialState = {
-    user : null,
+    UserData : null as User | null,
     isCodeforcesVerified: false,
 }
 
@@ -9,17 +10,22 @@ const userSlice = createSlice({
     name: "user",
     initialState,
     reducers: {
-        setUser: (state, action) => {
-            state.user = action.payload;
+        setUserData: (state, action) => {
+            state.UserData = action.payload;
+        },
+        setCodeforcesHandle: (state, action) => {
+            if (state.UserData) {
+                state.UserData.codeforces_info.username = action.payload;
+            }
         },
         setCodeforcesVerified: (state, action) => {
             state.isCodeforcesVerified = action.payload;
         },
-        resetUser: (state) => {
-            state.user = null;
+        resetUserData: (state) => {
+            state.UserData = null;
             state.isCodeforcesVerified = false;
         },
     },
 });
 export default userSlice;
-export const { setUser, setCodeforcesVerified, resetUser } = userSlice.actions;
+export const { setUserData, setCodeforcesVerified, resetUserData,setCodeforcesHandle } = userSlice.actions;

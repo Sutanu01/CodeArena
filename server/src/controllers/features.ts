@@ -22,14 +22,16 @@ const getLeaderboardInfo = TryCatch(
       sendResponse(404, false, "Page not found", res);
       return;
     }
+    const skipCount = (pageNumber - 1) * limitNumber;
     const users = await UserModel.find({})
-      .sort({ total_wins: -1, total_matches: -1 })
-      .skip((pageNumber - 1) * limitNumber)
+      .sort({ total_wins: -1, total_matches: 1 })
+      .skip(skipCount)
       .limit(limitNumber)
       .select("username avatar total_matches total_wins")
       .lean();
 
-    const leaderboard = users.map((user) => ({
+    const leaderboard = users.map((user,index) => ({
+      rank: skipCount + index + 1,
       username: user.username,
       avatar: user.avatar,
       total_matches: user.total_matches,
@@ -45,38 +47,11 @@ const getLeaderboardInfo = TryCatch(
   }
 );
 
-const getDailyStreakData = TryCatch(
-  async (req: Request, res: Response): Promise<any> => {
-    const { userId } = req.body;
-    if (!userId) {
-      sendResponse(400, false, "User ID is required", res);
-      return;
-    }
-    const user = await UserModel.findById(userId);
-    if (!user) {
-      sendResponse(404, false, "User not found", res);
-      return;
-    }
-    const data = {
-      login_data: user.login_data,
-      maxStreak: user.maxStreak,
-      currentStreak: user.currentStreak,
-    };
-    sendResponse(
-      200,
-      true,
-      "Daily streak data fetched successfully",
-      res,
-      data
-    );
-    return;
-  }
-);
 
+//idk cron need to be set up on server side also hook need to be changged for this to work
 const dailyUpdate = TryCatch(
   async (req: Request, res: Response): Promise<any> => {
-    //it means user logged in toady ,dont do api call if not logged obv
-    const { userId } = req.body;
+    const { userId,didLogin } = req.body;
     if (!userId) {
       sendResponse(400, false, "User ID is required", res);
       return;
@@ -86,9 +61,15 @@ const dailyUpdate = TryCatch(
       sendResponse(404, false, "User not found", res);
       return;
     }
-    user.currentStreak += 1;
-    user.maxStreak = Math.max(user.maxStreak, user.currentStreak);
-    user.login_data = user.login_data.slice(1).concat(true);
+    if(didLogin){
+      user.currentStreak += 1;
+      user.maxStreak = Math.max(user.maxStreak, user.currentStreak);
+      user.login_data = user.login_data.slice(1).concat(true);
+    }
+    else{
+      user.currentStreak = 0;
+      user.login_data = user.login_data.slice(1).concat(false);
+    }
     await user.save();
     sendResponse(200, true, "Daily streak updated successfully", res, {
       currentStreak: user.currentStreak,
@@ -99,4 +80,4 @@ const dailyUpdate = TryCatch(
   }
 );
 
-export { dailyUpdate, getDailyStreakData, getLeaderboardInfo };
+export { dailyUpdate, getLeaderboardInfo };

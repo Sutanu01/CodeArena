@@ -16,24 +16,27 @@ const handleClerkUserChange = TryCatch(
     if (!evt) {
       return sendResponse(400, false, "Invalid webhook event", res);
     }
-    if(evt.type==="user.updated" || evt.type==="user.created"){
-      const {id,username,email_addresses,image_url} = evt.data;
-      await UserModel.findOneAndUpdate({
-        clerkId: id
-      }, {
-        username,
-        email: email_addresses[0].email_address,
-        avatar: image_url
-      }, {
-        new: true,
-        upsert: true
-      });
+    if (evt.type === "user.updated" || evt.type === "user.created") {
+      const { id, username, email_addresses, image_url } = evt.data;
+      await UserModel.findOneAndUpdate(
+        {
+          clerkId: id,
+        },
+        {
+          username,
+          email: email_addresses[0].email_address,
+          avatar: image_url,
+        },
+        {
+          new: true,
+          upsert: true,
+        }
+      );
       console.log(`User with Clerk ID ${id} updated in database.`);
-    }
-    else if(evt.type==="user.deleted"){
+    } else if (evt.type === "user.deleted") {
       const clerkId = evt.data.id;
-      const user = await UserModel.deleteOne({ clerkId});
-      if(!user.deletedCount) {
+      const user = await UserModel.deleteOne({ clerkId });
+      if (!user.deletedCount) {
         console.log(`No user found with Clerk ID ${clerkId} to delete.`);
         sendResponse(404, false, "User not found", res);
         return;
@@ -42,25 +45,60 @@ const handleClerkUserChange = TryCatch(
     }
     sendResponse(200, true, "Webhook processed successfully", res);
     return;
-});
+  }
+);
 
 const getUserData = TryCatch(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const { username } = req.query;
-
-    if (typeof username !== "string" || !username.trim()) {
-      sendResponse(400, false, "Invalid username", res);
+    const { username ,clerkId} = req.query;
+    console.log("Fetching user data with query:", req.query);
+    if (clerkId && username) {
+      sendResponse(
+        400,
+        false,
+        "Please provide either clerkId or username, not both",
+        res
+      );
       return;
     }
-
-    const user = await UserModel.findOne({ username });
-    if (!user) {
-      sendResponse(404, false, "User not found", res);
+    if (!clerkId && !username) {
+      sendResponse(
+        400,
+        false,
+        "Please provide either clerkId or Username",
+        res
+      );
       return;
     }
+    if (username) {
+      if (typeof username !== "string" || !username.trim()) {
+        sendResponse(400, false, "Invalid username", res);
+        return;
+      }
 
-    sendResponse(200, true, "User found", res, user);
-    return;
+      const user = await UserModel.findOne({ username });
+      if (!user) {
+        sendResponse(404, false, "User not found", res);
+        return;
+      }
+
+      sendResponse(200, true, "User found", res, user);
+      return;
+    } else if (clerkId) {
+      if (typeof clerkId !== "string" || !clerkId.trim()) {
+        sendResponse(400, false, "Invalid Clerk ID", res);
+        return;
+      }
+
+      const user = await UserModel.findOne({ clerkId });
+      if (!user) {
+        sendResponse(404, false, "User not found", res);
+        return;
+      }
+
+      sendResponse(200, true, "User found", res, user);
+      return;
+    }
   }
 );
 
