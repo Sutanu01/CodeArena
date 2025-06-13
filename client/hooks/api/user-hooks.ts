@@ -1,4 +1,3 @@
-import { count } from "console";
 
 const server = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -21,7 +20,6 @@ const useVerifyCodeforcesHandle = async ({userId,codeforcesId}:{userId:string,co
     })
     const data =await response.json();
     const submission = data.data?.submissions?.[0];
-    console.log(submission)
     if(!submission || submission.verdict
      !== 'COMPILATION_ERROR') {
         return {

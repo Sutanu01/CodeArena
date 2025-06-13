@@ -6,21 +6,21 @@ import UserModel from "../models/User.js";
 const getSubmissionStatus = TryCatch(async (req: Request, res: Response): Promise<void> => {
   const { userId, codeforcesId, contestId, index, count } = req.body;
 
-  // if (!userId || !contestId || !index) {
-  //   sendResponse(400, false, "Missing required fields", res);
-  //   return;
-  // }
+  if (!userId || !contestId || !index || !codeforcesId) {
+    sendResponse(400, false, "Missing required fields", res);
+    return;
+  }
 
-  // const user = await UserModel.findById(userId);
-  // if (!user) {
-  //   sendResponse(404, false, "User not found", res);
-  //   return;
-  // }
+  const user = await UserModel.findById(userId);
+  if (!user) {
+    sendResponse(404, false, "User not found", res);
+    return;
+  }
 
-  // if (user.codeforces_info?.username && user.codeforces_info.username !== codeforcesId) {
-  //   sendResponse(400, false, "Invalid Codeforces handle", res);
-  //   return;
-  // }
+  if (user.codeforces_info?.username && user.codeforces_info.username !== codeforcesId) {
+    sendResponse(400, false, "Invalid Codeforces handle", res);
+    return;
+  }
 
   let url = `https://codeforces.com/api/user.status?handle=${codeforcesId}`;
   if (count) { url += `&count=${count}`; }

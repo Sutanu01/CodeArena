@@ -32,8 +32,8 @@ app.use(ErrorHandler);
 
 
 
-// await connectToDatabase();
-// fetchAndStoreQuestionsWeekly();
+await connectToDatabase();
+fetchAndStoreQuestionsWeekly();
 
 
 socketSetup(io);
