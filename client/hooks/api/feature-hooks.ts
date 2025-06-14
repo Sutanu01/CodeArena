@@ -30,7 +30,7 @@ export const useLeaderboardInfo = (pageNumber: number, limitNumber: number) => {
           }
         );
         const data = await res.json();
-
+        console.log("leaderbaordh data :",data);
         if (!data.success) {
           setResponse({
             success: false,
@@ -63,6 +63,7 @@ export const useLeaderboardInfo = (pageNumber: number, limitNumber: number) => {
 
 
 //Implement CRON in backend to update daily data
+//Kal kardunga
 
 // export const useUpdateDaily = () => {
 //   const updateDaily = async (

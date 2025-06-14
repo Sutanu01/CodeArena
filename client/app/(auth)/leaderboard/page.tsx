@@ -1,7 +1,9 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Trophy, Medal, Award, Users, Target, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Navbar } from '@/components/navbar';
+import { useLeaderboardInfo } from '@/hooks/api/feature-hooks'; 
+import { TopThreeLoadingSkeleton, TableLoadingSkeleton } from '@/components/Loading-Skeletons';
 
 interface LeaderboardUser {
   username: string;
@@ -17,62 +19,12 @@ interface LeaderboardData {
   currentPage: number;
 }
 
+
 const Leaderboard = () => {
-  const [data, setData] = useState<LeaderboardData | null>(null);
-  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [error, setError] = useState<string | null>(null);
-
-  // Mock data for demonstration
-  const mockData: LeaderboardData = {
-    leaderboard: [
-      { username: "BigBoiBlastoise", avatar: "👨‍💻", total_matches: 156, total_wins: 142 },
-      { username: "JhonnySilverhand", avatar: "👩‍💻", total_matches: 134, total_wins: 125 },
-      { username: "JinSakai", avatar: "🐍", total_matches: 128, total_wins: 118 },
-      { username: "Mbappu", avatar: "⚛️", total_matches: 119, total_wins: 108 },
-      { username: "Pessi", avatar: "☕", total_matches: 115, total_wins: 103 },
-      { username: "penaldo", avatar: "🔧", total_matches: 112, total_wins: 98 },
-      { username: "WizardLiz idk", avatar: "✨", total_matches: 108, total_wins: 95 },
-      { username: "Satu op", avatar: "📊", total_matches: 105, total_wins: 92 },
-      { username: "Maliketh", avatar: "🚀", total_matches: 102, total_wins: 89 },
-      { username: "BTss", avatar: "💻", total_matches: 98, total_wins: 85 },
-      { username: "Pessis", avatar: "☕", total_matches: 115, total_wins: 103 },
-      { username: "penaldos", avatar: "🔧", total_matches: 112, total_wins: 98 },
-      { username: "WizardLiz idks", avatar: "✨", total_matches: 108, total_wins: 95 },
-      { username: "Satu ops", avatar: "📊", total_matches: 105, total_wins: 92 },
-      { username: "Malikeths", avatar: "🚀", total_matches: 102, total_wins: 89 },
-      { username: "BTsss", avatar: "💻", total_matches: 98, total_wins: 85 },
-      { username: "Pessiss", avatar: "☕", total_matches: 115, total_wins: 103 },
-      { username: "penaldoss", avatar: "🔧", total_matches: 112, total_wins: 98 },
-      { username: "WizardLiz idkss", avatar: "✨", total_matches: 108, total_wins: 95 },
-      { username: "Satu opss", avatar: "📊", total_matches: 105, total_wins: 92 },
-      { username: "Malikethss", avatar: "🚀", total_matches: 102, total_wins: 89 },
-      { username: "BTssss", avatar: "💻", total_matches: 98, total_wins: 85 }
-    ],
-    totalUsers: 1247,
-    totalPages: 25,
-    currentPage: 1
-  };
-
-  useEffect(() => {
-    const fetchLeaderboard = async () => {
-      setLoading(true);
-      try {
-        // Replace with actual API call
-        // const response = await fetch(`/api/leaderboard?page=${currentPage}&limit=50`);
-        // const result = await response.json();
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setData(mockData);
-        setError(null);
-      } catch (err) {
-        setError('Failed to fetch leaderboard data');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchLeaderboard();
-  }, [currentPage]);
+  const itemsPerPage = 50;
+  const { success, isError, message, data } = useLeaderboardInfo(currentPage, itemsPerPage);
+  const loading = !success && !isError;
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
@@ -110,33 +62,97 @@ const Leaderboard = () => {
     }
   };
 
+  const renderAvatar = (avatarUrl: string, username: string) => {
+    if (avatarUrl && (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://'))) {
+      return (
+        <img 
+          src={avatarUrl} 
+          alt={`${username}'s avatar`}
+          className="w-6 h-6 sm:w-8 sm:h-8 rounded-full object-cover"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random`;
+          }}
+        />
+      );
+    }
+    
+    if (avatarUrl && avatarUrl.length === 1 && /\p{Emoji}/u.test(avatarUrl)) {
+      return <span className="text-lg sm:text-2xl">{avatarUrl}</span>;
+    }
+    
+    return (
+      <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs sm:text-sm">
+        {username?.charAt(0)?.toUpperCase() || '?'}
+      </div>
+    );
+  };
+
   if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        <Navbar />
+        <div className="max-w-6xl mx-auto p-4 pt-20">
+          {/* Header */}
+          <div className="text-center mb-6 sm:mb-8">
+            <div className="flex items-center justify-center mb-4">
+              <Trophy className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-500 mr-2 sm:mr-3" />
+              <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Leaderboard
+              </h1>
+            </div>
+            <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-lg">Top coders competing in the arena</p>
+            <div className="flex items-center justify-center mt-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+              <Users className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+              <div className="h-3 bg-gray-300 dark:bg-gray-600 rounded w-32 animate-pulse"></div>
+            </div>
+          </div>
+
+          <TopThreeLoadingSkeleton />
+
+          <TableLoadingSkeleton />
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4">
         <Navbar />
         <div className="max-w-6xl mx-auto pt-20">
           <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600 dark:text-gray-400">Loading leaderboard...</p>
+            <div className="mb-4">
+              <div className="w-16 h-16 mx-auto mb-4 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Failed to load leaderboard</h3>
+            <p className="text-red-600 dark:text-red-400 mb-4">{message || 'An error occurred while fetching leaderboard data'}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+            >
+              Try Again
+            </button>
           </div>
         </div>
       </div>
     );
   }
 
-  if (error) {
+  // If we have data but no leaderboard entries 
+  if (!data?.leaderboard || data.leaderboard.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4">
         <Navbar />
         <div className="max-w-6xl mx-auto pt-20">
           <div className="text-center py-12">
-            <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
-            <button 
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-            >
-              Retry
-            </button>
+            <Trophy className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No competitors yet</h3>
+            <p className="text-gray-600 dark:text-gray-400">Be the first to compete and climb the leaderboard!</p>
           </div>
         </div>
       </div>
@@ -158,19 +174,21 @@ const Leaderboard = () => {
           <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-lg">Top coders competing in the arena</p>
           <div className="flex items-center justify-center mt-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
             <Users className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-            <span>{data?.totalUsers.toLocaleString()} total competitors</span>
+            <span>{data.totalUsers?.toLocaleString() || '0'} total competitors</span>
           </div>
         </div>
 
         {/* Compact Top 3 */}
-        {data && data.leaderboard.length >= 3 && (
+        {data.leaderboard.length >= 3 && (
           <div className="mb-6 sm:mb-8">
             <div className="grid grid-cols-3 gap-2 sm:gap-4 max-w-4xl mx-auto">
               {/* 2nd Place */}
               <div className="flex flex-col items-center order-1">
                 <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl shadow-lg p-3 sm:p-4 w-full transform hover:scale-105 transition-transform">
                   <div className="text-center">
-                    <div className="text-lg sm:text-2xl mb-1 sm:mb-2">{data.leaderboard[1].avatar}</div>
+                    <div className="flex justify-center mb-1 sm:mb-2">
+                      {renderAvatar(data.leaderboard[1].avatar, data.leaderboard[1].username)}
+                    </div>
                     <h3 className="font-bold text-xs sm:text-sm mb-1 truncate">{data.leaderboard[1].username}</h3>
                     <div className="flex items-center justify-center mb-1 sm:mb-2">
                       <Medal className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 mr-1" />
@@ -194,7 +212,9 @@ const Leaderboard = () => {
               <div className="flex flex-col items-center order-2">
                 <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl shadow-xl p-3 sm:p-5 w-full transform hover:scale-105 transition-transform border-2 border-yellow-200 dark:border-yellow-600">
                   <div className="text-center">
-                    <div className="text-2xl sm:text-3xl mb-1 sm:mb-2">{data.leaderboard[0].avatar}</div>
+                    <div className="flex justify-center mb-1 sm:mb-2">
+                      {renderAvatar(data.leaderboard[0].avatar, data.leaderboard[0].username)}
+                    </div>
                     <h3 className="font-bold text-sm sm:text-base mb-1 truncate">{data.leaderboard[0].username}</h3>
                     <div className="flex items-center justify-center mb-1 sm:mb-2">
                       <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500 mr-1" />
@@ -218,7 +238,9 @@ const Leaderboard = () => {
               <div className="flex flex-col items-center order-3">
                 <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl shadow-lg p-3 sm:p-4 w-full transform hover:scale-105 transition-transform">
                   <div className="text-center">
-                    <div className="text-lg sm:text-2xl mb-1 sm:mb-2">{data.leaderboard[2].avatar}</div>
+                    <div className="flex justify-center mb-1 sm:mb-2">
+                      {renderAvatar(data.leaderboard[2].avatar, data.leaderboard[2].username)}
+                    </div>
                     <h3 className="font-bold text-xs sm:text-sm mb-1 truncate">{data.leaderboard[2].username}</h3>
                     <div className="flex items-center justify-center mb-1 sm:mb-2">
                       <Award className="w-3 h-3 sm:w-4 sm:h-4 text-amber-600 mr-1" />
@@ -262,8 +284,8 @@ const Leaderboard = () => {
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {data?.leaderboard.map((user, index) => {
-                  const rank = (currentPage - 1) * 50 + index + 1;
+                {data.leaderboard.map((user: LeaderboardUser, index: number) => {
+                  const rank = (currentPage - 1) * itemsPerPage + index + 1;
                   const winRate = calculateWinRate(user.total_wins, user.total_matches);
                   
                   return (
@@ -275,7 +297,9 @@ const Leaderboard = () => {
                       </td>
                       <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="text-lg sm:text-2xl mr-2 sm:mr-3">{user.avatar}</div>
+                          <div className="mr-2 sm:mr-3">
+                            {renderAvatar(user.avatar, user.username)}
+                          </div>
                           <div className="min-w-0">
                             <div className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-24 sm:max-w-none">{user.username}</div>
                             {rank <= 10 && (
@@ -316,13 +340,13 @@ const Leaderboard = () => {
             <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
                 <div className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
-                  Page {data.currentPage} of {data.totalPages}
+                  Page {data.currentPage || currentPage} of {data.totalPages}
                 </div>
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="flex items-center px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                     <span className="hidden sm:inline">Previous</span>
@@ -330,19 +354,28 @@ const Leaderboard = () => {
                   </button>
                   
                   <div className="flex items-center space-x-1">
-                    {Array.from({ length: Math.min(3, data.totalPages) }, (_, i) => {
-                      const page = i + 1;
+                    {Array.from({ length: Math.min(5, data.totalPages) }, (_, i) => {
+                      let pageNumber;
+                      if (data.totalPages <= 5) {
+                        pageNumber = i + 1;
+                      } else {
+                        const start = Math.max(1, currentPage - 2);
+                        const end = Math.min(data.totalPages, start + 4);
+                        pageNumber = start + i;
+                        if (pageNumber > end) return null;
+                      }
+                      
                       return (
                         <button
-                          key={page}
-                          onClick={() => handlePageChange(page)}
-                          className={`px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm rounded-lg ${
-                            page === currentPage
+                          key={pageNumber}
+                          onClick={() => handlePageChange(pageNumber)}
+                          className={`px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm rounded-lg transition-colors ${
+                            pageNumber === currentPage
                               ? 'bg-blue-600 text-white'
                               : 'text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
                           }`}
                         >
-                          {page}
+                          {pageNumber}
                         </button>
                       );
                     })}
@@ -351,7 +384,7 @@ const Leaderboard = () => {
                   <button
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === data.totalPages}
-                    className="flex items-center px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     <span className="hidden sm:inline">Next</span>
                     <span className="sm:hidden">Next</span>

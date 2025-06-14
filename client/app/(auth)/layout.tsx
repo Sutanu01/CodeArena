@@ -5,6 +5,7 @@ import "../globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ClerkProvider, SignedIn, SignedOut, SignIn } from "@clerk/nextjs";
 import SignInComponent from "@/components/ui/SignIn";
+import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -29,7 +30,10 @@ export default function RootLayout({
       <SignedOut>
         <SignInComponent />
       </SignedOut>
-      <SignedIn>{children}</SignedIn>
+      <SignedIn>
+        {children}
+        <Toaster position="bottom-right" richColors/>
+      </SignedIn>
     </ThemeProvider>
   );
 }

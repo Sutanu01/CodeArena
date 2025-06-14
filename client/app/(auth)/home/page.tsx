@@ -2,6 +2,7 @@
 
 import { OneVsOneModal } from "@/components/custom-1v1-modal";
 import { CustomRoomModal } from "@/components/custom-room-modal";
+import { CardSkeleton, CFCardSkeleton, GraphSkeleton } from "@/components/Loading-Skeletons";
 import { Navbar } from "@/components/navbar";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,7 +33,7 @@ import {
   Target,
   TrendingUp,
   Trophy,
-  Users
+  Users,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -45,6 +46,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { toast } from "sonner";
 
 export default function HomePage() {
   const dispatch = useDispatch();
@@ -52,7 +54,7 @@ export default function HomePage() {
   const { UserData, isCodeforcesVerified } = useSelector(
     (state: RootState) => state.user
   );
-  const { fetchUser, loading, result } = useGetUserInfo();
+  const { fetchUser, result } = useGetUserInfo();
   const updateCfHook = useUpdateCodeforcesInfo();
   const [isCustomRoomOpen, setIsCustomRoomOpen] = useState(false);
   const [is1v1Mode, set1v1Mode] = useState(false);
@@ -61,6 +63,9 @@ export default function HomePage() {
     losses: 0,
     ratingData: [],
   });
+  const [loading, setLoading] = useState(false);
+
+  //Dashboard Rating Change Calc Func
   const calculateLastChange = (data: { rating: number }[]): string => {
     if (data.length < 1) return "N/A";
     else if (data.length < 2) return String(data[data.length - 1].rating);
@@ -70,8 +75,11 @@ export default function HomePage() {
       ? `+${lastRating - secondLastRating}`
       : `${lastRating - secondLastRating}`;
   };
+
+  //More like updating client side user data or fetching data
+  //if user had cf verified, updates cf status
   const updateUser = async () => {
-    const resp = await fetchUser(user?.id || "");
+    const resp = await fetchUser(user?.id || ""); //uses clerk id to fetch user
     if (resp.success) {
       dispatch(setUserData(resp.data));
       if (UserData?.total_matches == 0)
@@ -89,6 +97,7 @@ export default function HomePage() {
           ratingData: moreInfo.ratingData,
         });
       console.log("User data updated:", UserData);
+      toast.success("User data updated");
       if (resp.data?.codeforces_info?.username) {
         setMoreInfo({
           winrate: moreInfo.winrate,
@@ -106,126 +115,144 @@ export default function HomePage() {
       }
     } else {
       console.error("Failed to fetch user info:", resp.message);
+      toast.error("Failed to fetch user info:");
     }
   };
-
+  //generic ahh function for fetching user handle info and updating info on db for user
   const updateCodeforcesInfo = async () => {
     const resp = await updateCfHook.update({
-      userId: UserData?._id as string,
+      userId: UserData?._id as string, //using mongodb id
       codeforcesId: UserData?.codeforces_info?.username || "",
     });
     if (resp.success) {
       console.log("Codeforces info updated successfully");
+      toast.success("Codeforces info updated successfully");
       updateUser();
     } else {
       console.error(
         "Failed to update Codeforces info:",
         updateCfHook.result?.message || "Unknown error"
       );
+      toast.error("Failed to update Codeforces info:");
     }
   };
+  //so this useeffect gets triggered when a user object from clerk is loaded or cf is verified
+  //1. if cf aint verified it fires fetch data if user had verified cf -> updates isverified -> retriggers useeffect -> this time updates -> cf info on user object on mongo
+  //2. if cf verified (from verification card) , updates cf info on user object on db
 
+  //one issue though when using unlink button on the /home it just sets iscf to false, which triggers the above loop but never deletes cf info from user db
+  // think we need to make a rppute for that
   useEffect(() => {
+    setLoading(true);
     if (!isLoaded || !isSignedIn) return;
     if (isCodeforcesVerified) {
       updateCodeforcesInfo();
     } else {
       updateUser();
     }
-  }, [isLoaded, isSignedIn, user, isCodeforcesVerified]);
+    setLoading(false);
+  }, [user, isCodeforcesVerified]);
+  //isloaded and user are same becuase, if clerk has loaded itll give user object which will cause useeffect triggering
+  //isSigned is useless ig becaue routes are protected, so if the page is being rendered means theyre signed in anyways
+  //so ig only keeping user and cfverify good enough (idk i maybe wrong huehue)
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <div className="flex flex-col space-y-2 mb-2">
-                <h1 className="text-3xl font-extrabold text-blue-900">
-                  Welcome back,{" "}
-                  <span className="text-blue-500 font-semibold text-5xl">
-                    {UserData?.username}
-                  </span>
-                </h1>
-              </div>
-              <CardTitle className="flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-yellow-500" />
-                Performance Overview
-              </CardTitle>
-              <CardDescription>
-                Your competitive programming statistics
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="px-8 py-6">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-                <div className="flex flex-col items-center justify-center text-center h-full">
-                  <div className="p-4 bg-yellow-100 dark:bg-yellow-900/20 rounded-full mb-3">
-                    <Trophy className="h-8 w-8 text-yellow-600 dark:text-yellow-400" />
-                  </div>
-                  <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400 mb-1">
-                    {UserData?.codeforces_info?.rating || "N/A"}
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Current Rating
-                  </p>
-                  <div className="flex items-center justify-center">
-                    <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
-                    <span className="text-xs text-muted-foreground">
-                      keep improving!
+          {loading ? (
+            <CardSkeleton />
+          ) : (
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <div className="flex flex-col space-y-2 mb-2">
+                  <h1 className="text-3xl font-extrabold text-blue-900">
+                    Welcome back,{" "}
+                    <span className="text-blue-500 font-semibold text-5xl">
+                      {UserData?.username}
                     </span>
-                  </div>
+                  </h1>
                 </div>
+                <CardTitle className="flex items-center gap-2">
+                  <Trophy className="h-5 w-5 text-yellow-500" />
+                  Performance Overview
+                </CardTitle>
+                <CardDescription>
+                  Your competitive programming statistics
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="px-8 py-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+                  <div className="flex flex-col items-center justify-center text-center h-full">
+                    <div className="p-4 bg-yellow-100 dark:bg-yellow-900/20 rounded-full mb-3">
+                      <Trophy className="h-8 w-8 text-yellow-600 dark:text-yellow-400" />
+                    </div>
+                    <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400 mb-1">
+                      {UserData?.codeforces_info?.rating || "N/A"}
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Current Rating
+                    </p>
+                    <div className="flex items-center justify-center">
+                      <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
+                      <span className="text-xs text-muted-foreground">
+                        keep improving!
+                      </span>
+                    </div>
+                  </div>
 
-                <div className="flex flex-col items-center justify-center text-center h-full">
-                  <div className="p-4 bg-green-100 dark:bg-green-900/20 rounded-full mb-3">
-                    <Target className="h-8 w-8 text-green-600 dark:text-green-400" />
+                  <div className="flex flex-col items-center justify-center text-center h-full">
+                    <div className="p-4 bg-green-100 dark:bg-green-900/20 rounded-full mb-3">
+                      <Target className="h-8 w-8 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div className="text-2xl font-bold text-green-600 dark:text-green-400 mb-1">
+                      {UserData?.total_wins}
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Total Wins
+                    </p>
+                    <div className="text-xs text-muted-foreground">
+                      {moreInfo.winrate}% win rate
+                    </div>
                   </div>
-                  <div className="text-2xl font-bold text-green-600 dark:text-green-400 mb-1">
-                    {UserData?.total_wins}
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Total Wins
-                  </p>
-                  <div className="text-xs text-muted-foreground">
-                    {moreInfo.winrate}% win rate
-                  </div>
-                </div>
 
-                <div className="flex flex-col items-center justify-center text-center h-full">
-                  <div className="p-4 bg-blue-100 dark:bg-blue-900/20 rounded-full mb-3">
-                    <Users className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                  <div className="flex flex-col items-center justify-center text-center h-full">
+                    <div className="p-4 bg-blue-100 dark:bg-blue-900/20 rounded-full mb-3">
+                      <Users className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-1">
+                      {UserData?.total_matches}
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Total Matches
+                    </p>
+                    <div className="text-xs text-muted-foreground">
+                      {moreInfo.losses} losses
+                    </div>
                   </div>
-                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-1">
-                    {UserData?.total_matches}
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Total Matches
-                  </p>
-                  <div className="text-xs text-muted-foreground">
-                    {moreInfo.losses} losses
-                  </div>
-                </div>
 
-                <div className="flex flex-col items-center justify-center text-center h-full">
-                  <div className="p-4 bg-purple-100 dark:bg-purple-900/20 rounded-full mb-3">
-                    <Clock className="h-8 w-8 text-purple-600 dark:text-purple-400" />
-                  </div>
-                  <div className="text-2xl font-bold text-purple-600 dark:text-purple-400 mb-1">
-                    {UserData?.currentStreak}
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Current Streak
-                  </p>
-                  <div className="text-xs text-muted-foreground">
-                    Personal best: {UserData?.maxStreak}
+                  <div className="flex flex-col items-center justify-center text-center h-full">
+                    <div className="p-4 bg-purple-100 dark:bg-purple-900/20 rounded-full mb-3">
+                      <Clock className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <div className="text-2xl font-bold text-purple-600 dark:text-purple-400 mb-1">
+                      {UserData?.currentStreak}
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Current Streak
+                    </p>
+                    <div className="text-xs text-muted-foreground">
+                      Personal best: {UserData?.maxStreak}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-          {isCodeforcesVerified ? (
+              </CardContent>
+            </Card>
+          )}
+          {loading ? (
+            <CFCardSkeleton/>
+          ) : isCodeforcesVerified ? (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -238,8 +265,7 @@ export default function HomePage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="font-bold text-blue-600 text-lg">
-                      {/* {UserData?.codeforces_info.username} */}
-                      Sutanu_19
+                      {UserData?.codeforces_info.username}
                     </div>
                     <div className="text-sm text-muted-foreground">
                       Codeforces Handle
@@ -309,7 +335,7 @@ export default function HomePage() {
               </CardContent>
             </Card>
           ) : (
-            <CodeforcesVerificationCard />
+            <CodeforcesVerificationCard/>
           )}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -380,7 +406,9 @@ export default function HomePage() {
           </Card>
         </div>
         {isCodeforcesVerified && (
-          <Card className="mb-8">
+          loading
+          ? <GraphSkeleton/>
+          : <Card className="mb-8">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5 text-blue-500" />
@@ -496,7 +524,6 @@ export default function HomePage() {
             </CardContent>
           </Card>
         )}
-
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Card className="md:col-span-2 lg:col-span-1">
             <CardHeader>

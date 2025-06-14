@@ -28,4 +28,4 @@ const userSlice = createSlice({
     },
 });
 export default userSlice;
-export const { setUserData, setCodeforcesVerified, resetUserData,setCodeforcesHandle } = userSlice.actions;
+export const { setUserData, setCodeforcesVerified, setCodeforcesHandle, resetUserData } = userSlice.actions;

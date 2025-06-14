@@ -71,6 +71,7 @@ export const useVerifyCodeforcesHandle = () => {
   return { verify, loading, result };
 };
 
+//Helps in updating Codeforces info in the mongodb after user object is stored in redux with states fro ui management
 export const useUpdateCodeforcesInfo = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ResponseType | null>(null);
@@ -123,7 +124,7 @@ export const useUpdateCodeforcesInfo = () => {
   return { update, loading, result };
 };
 
-
+//Fetching User Data from MongoDB using Clerk ID with states for ui management
 export const useGetUserInfo = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ResponseType | null>(null);

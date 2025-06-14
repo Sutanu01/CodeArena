@@ -31,6 +31,7 @@ export function CodeforcesVerificationCard() {
   const timerRef = useRef<number>(0);
   const dispatch = useDispatch();
   const {UserData,isCodeforcesVerified} = useSelector((state:RootState) => state.user);
+
   useEffect(() => {
     if (step === 2) {
       setCountdown(120);
