@@ -8,11 +8,11 @@ import { TrendingUp } from "lucide-react";
 //dashboard ka maal pani
 export function CardSkeleton() {
   return (
-    <Card className="animate-pulse lg:col-span-2">
+    <Card className="animate-pulse lg:col-span-2" style={{ animationDuration: '2s' }}>
       <CardHeader className="space-y-2">
-        <div className="h-8 bg-gray-200 rounded w-1/3" />
-        <div className="h-6 bg-gray-200 rounded w-1/4" />
-        <div className="h-4 bg-gray-200 rounded w-1/2" />
+        <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
+        <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
       </CardHeader>
       <CardContent className="px-8 py-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
@@ -21,10 +21,10 @@ export function CardSkeleton() {
               key={idx}
               className="flex flex-col items-center justify-center text-center h-full space-y-2"
             >
-              <div className="h-10 w-10 bg-gray-200 rounded-full" />
-              <div className="h-6 bg-gray-200 rounded w-1/2" />
-              <div className="h-4 bg-gray-200 rounded w-1/3" />
-              <div className="h-3 bg-gray-200 rounded w-1/4" />
+              <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded-full" />
+              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
+              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
             </div>
           ))}
         </div>
@@ -35,20 +35,19 @@ export function CardSkeleton() {
 
 export function CFCardSkeleton() {
   return (
-    <Card className="animate-pulse lg:col-span-1">
-        
+    <Card className="animate-pulse lg:col-span-1" style={{ animationDuration: '2s' }}>
       <CardHeader className="space-y-2">
-        <div className="h-6 bg-gray-200 rounded w-1/3" />
-        <div className="h-4 bg-gray-200 rounded w-1/2" />
+        <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
       </CardHeader>
 
       <CardContent className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <div className="h-4 bg-gray-200 rounded w-1/4" />
-            <div className="h-3 bg-gray-200 rounded w-1/5" />
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
+            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/5" />
           </div>
-          <div className="h-6 w-6 bg-gray-200 rounded" />
+          <div className="h-6 w-6 bg-gray-200 dark:bg-gray-700 rounded" />
         </div>
         {[
           "Rating",
@@ -61,8 +60,8 @@ export function CFCardSkeleton() {
             key={idx}
             className="flex justify-between items-center"
           >
-            <div className="h-3 bg-gray-200 rounded w-1/4" />
-            <div className="h-3 bg-gray-200 rounded w-1/6" />
+            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
+            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/6" />
           </div>
         ))}
       </CardContent>
@@ -72,20 +71,19 @@ export function CFCardSkeleton() {
 
 export function GraphSkeleton() {
   return (
-    <Card className="mb-8 animate-pulse">
+    <Card className="mb-8 animate-pulse" style={{ animationDuration: '2s' }}>
       <CardHeader className="space-y-2">
-        <div className="h-6 bg-gray-200 rounded w-1/3" />
-
-        <div className="h-4 bg-gray-200 rounded w-1/2" />
+        <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
       </CardHeader>
 
       <CardContent>
-        <div className="h-64 w-full bg-gray-200 rounded" />
+        <div className="h-64 w-full bg-gray-200 dark:bg-gray-700 rounded" />
 
         <div className="flex justify-between items-center mt-4 pt-4 border-t">
-          <div className="h-4 bg-gray-200 rounded w-1/4" />
-          <div className="h-4 bg-gray-200 rounded w-1/4" />
-          <div className="h-4 bg-gray-200 rounded w-1/4" />
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
         </div>
       </CardContent>
     </Card>

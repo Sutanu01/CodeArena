@@ -1,9 +1,9 @@
 "use client";
 import React, { useState } from 'react';
 import { Trophy, Medal, Award, Users, Target, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Navbar } from '@/components/navbar';
 import { useLeaderboardInfo } from '@/hooks/api/feature-hooks'; 
 import { TopThreeLoadingSkeleton, TableLoadingSkeleton } from '@/components/Loading-Skeletons';
+import Navbar from '@/components/navbar';
 
 interface LeaderboardUser {
   username: string;

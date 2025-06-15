@@ -2,8 +2,12 @@
 
 import { OneVsOneModal } from "@/components/custom-1v1-modal";
 import { CustomRoomModal } from "@/components/custom-room-modal";
-import { CardSkeleton, CFCardSkeleton, GraphSkeleton } from "@/components/Loading-Skeletons";
-import { Navbar } from "@/components/navbar";
+import {
+  CardSkeleton,
+  CFCardSkeleton,
+  GraphSkeleton,
+} from "@/components/Loading-Skeletons";
+import Navbar from "@/components/navbar";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -28,6 +32,7 @@ import {
   ExternalLink,
   Plus,
   Puzzle,
+  RefreshCw,
   Star,
   Swords,
   Target,
@@ -47,6 +52,8 @@ import {
   YAxis,
 } from "recharts";
 import { toast } from "sonner";
+import { getLocalCache, setLocalCache } from "@/lib/utils";
+import { getLegendProps } from "recharts/types/util/getLegendProps";
 
 export default function HomePage() {
   const dispatch = useDispatch();
@@ -64,6 +71,7 @@ export default function HomePage() {
     ratingData: [],
   });
   const [loading, setLoading] = useState(true);
+  const CACHE_KEY = "user-data-tralala";
 
   //Dashboard Rating Change Calc Func
   const calculateLastChange = (data: { rating: number }[]): string => {
@@ -76,10 +84,10 @@ export default function HomePage() {
       : `${lastRating - secondLastRating}`;
   };
 
-
   const updateUser = async () => {
     const resp = await GetUserInfo.fetchUser(user?.id || ""); //uses clerk id to fetch user
     if (resp.success) {
+      console.log("resp data ",resp.data);
       dispatch(setUserData(resp.data));
       if (UserData?.total_matches == 0)
         setMoreInfo({
@@ -117,43 +125,64 @@ export default function HomePage() {
     }
   };
 
-
   const updateCodeforcesInfo = async () => {
-    if(!UserData || !UserData?.codeforces_info?.username){
-       updateUser();
-    }
-    else{
-      const resp = await updateCfHook.update({
-      userId: UserData?._id as string, //using mongodb id
-      codeforcesId: UserData?.codeforces_info?.username || "",
-    });
-    if (resp.success) {
-      console.log("Codeforces info updated successfully");
+    if (!UserData || !UserData?.codeforces_info?.username) {
       updateUser();
     } else {
-      console.error(
-        "Failed to update Codeforces info:",
-        updateCfHook.result?.message || "Unknown error"
-      );
-      toast.error("Error fetching Codeforces info");
+      const resp = await updateCfHook.update({
+        userId: UserData?._id as string, //using mongodb id
+        codeforcesId: UserData?.codeforces_info?.username || "",
+      });
+      if (resp.success) {
+        console.log("Codeforces info updated successfully");
+        updateUser();
+        setLocalCache(CACHE_KEY, UserData, 10);
+      } else {
+        console.error(
+          "Failed to update Codeforces info:",
+          updateCfHook.result?.message || "Unknown error"
+        );
+        toast.error("Error fetching Codeforces info");
+      }
     }
-    }
-    
   };
 
+  const handleRefreshCodeforces = () => {
+    //this shit workign fine as hell
+    if (getLocalCache(CACHE_KEY)) {
+      toast.info("Wait a Few Minutes before Updating again...");
+      return;
+    }
+    updateCodeforcesInfo(); //didnt add update user, as updateuser() is already in updatecfinfo
+  };
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
-    setLoading(true);
+    //Commented out but test this one
+    // const data = getLocalCache(CACHE_KEY);
+    // if (data) {
+    //   console.log("new data",data);
+    //   dispatch(setUserData(data));
+    //   console.log("Redux User state data ",UserData);
+    //   toast.info("Wait a Few Minutes before Updating again...");
+    //   return;
+    // }
+    //bhai fix this shit, we just need to figure out to dispatch this shit ;-;
+    //data is in cache and data is also being printed on console but for some reason, its not dispatching on UserData, its printign null
+    //gpt says is normal redux async issue where the redux state gets updates leter, but due to this the loading isnt being finished even though data is presebt in cachce
+    //run it for yourseld and youll understabd
+    //and yes checking cache here wont cuase issuses, idk if you want explanation ill explain tomorrow
+    //but in short basicallt setLocalCache() is only set after when cf is verified and data fetched , so yeah
+    //good night uwu
     updateCodeforcesInfo();
   }, [user, isCodeforcesVerified]);
-  
+
   useEffect(() => {
-    const isloading =
-      GetUserInfo.loading || updateCfHook.loading;
-      setLoading(isloading);
+    const isloading = GetUserInfo.loading || updateCfHook.loading;
+    setLoading(isloading);
+    if (!isloading) toast.success("Data Updated Successfully");
   }, [GetUserInfo.loading, updateCfHook.loading]);
-  
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -168,8 +197,10 @@ export default function HomePage() {
                   <h1 className="text-3xl font-extrabold text-blue-900">
                     Welcome back,{" "}
                     <span className="text-blue-500 font-semibold text-5xl">
-                      {UserData?.username.slice(0, 1).toUpperCase().concat(
-                        UserData?.username.slice(1))}
+                      {UserData?.username
+                        .slice(0, 1)
+                        .toUpperCase()
+                        .concat(UserData?.username.slice(1))}
                     </span>
                   </h1>
                 </div>
@@ -250,15 +281,30 @@ export default function HomePage() {
             </Card>
           )}
           {loading ? (
-            <CFCardSkeleton/>
+            <CFCardSkeleton />
           ) : isCodeforcesVerified ? (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Code2 className="h-5 w-5 text-blue-500" />
-                  Codeforces Profile
-                </CardTitle>
-                <CardDescription>External platform statistics</CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Code2 className="h-5 w-5 text-blue-500" />
+                      Codeforces Profile
+                    </CardTitle>
+                    <CardDescription>
+                      External platform statistics
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRefreshCodeforces}
+                    className="flex items-center space-x-2 bg-blue-100 text-blue-700 hover:bg-blue-200"
+                  >
+                    <RefreshCw className="h-5 w-5" />
+                    <span className="text-sm font-medium">Refresh</span>
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex items-center justify-between">
@@ -334,7 +380,7 @@ export default function HomePage() {
               </CardContent>
             </Card>
           ) : (
-            <CodeforcesVerificationCard/>
+            <CodeforcesVerificationCard />
           )}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -404,132 +450,133 @@ export default function HomePage() {
             </CardContent>
           </Card>
         </div>
-        {isCodeforcesVerified && (
-          loading
-          ? <GraphSkeleton/>
-          : <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-blue-500" />
-                Rating Progress
-              </CardTitle>
-              <CardDescription>
-                Your rating evolution over the last contests
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart
-                    data={moreInfo.ratingData}
-                    width={600}
-                    height={300}
-                    margin={{
-                      top: 0,
-                      right: 15,
-                      left: 0,
-                      bottom: 5,
-                    }}
-                  >
-                    <defs>
-                      <linearGradient
-                        id="ratingGradient"
-                        x1="1"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop
-                          offset="5%"
-                          stopColor="#3b82f6"
-                          stopOpacity={0.3}
-                        />
-                        <stop
-                          offset="95%"
-                          stopColor="#3b82f6"
-                          stopOpacity={0}
-                        />
-                      </linearGradient>
-                    </defs>
-
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      className="opacity-30"
-                    />
-
-                    <XAxis
-                      dataKey="contestNumber"
-                      className="text-xs"
-                      tick={{ fontSize: 12 }}
-                      label={{
-                        value: "Contest",
-                        position: "insideBottom",
-                        offset: -5,
+        {isCodeforcesVerified &&
+          (loading ? (
+            <GraphSkeleton />
+          ) : (
+            <Card className="mb-8">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-blue-500" />
+                  Rating Progress
+                </CardTitle>
+                <CardDescription>
+                  Your rating evolution over the last contests
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart
+                      data={moreInfo.ratingData}
+                      width={600}
+                      height={300}
+                      margin={{
+                        top: 0,
+                        right: 15,
+                        left: 0,
+                        bottom: 5,
                       }}
-                      interval={4}
-                    />
+                    >
+                      <defs>
+                        <linearGradient
+                          id="ratingGradient"
+                          x1="1"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="5%"
+                            stopColor="#3b82f6"
+                            stopOpacity={0.3}
+                          />
+                          <stop
+                            offset="95%"
+                            stopColor="#3b82f6"
+                            stopOpacity={0}
+                          />
+                        </linearGradient>
+                      </defs>
 
-                    <YAxis
-                      domain={["0", "dataMax + 200"]}
-                      className="text-xs"
-                      tick={{ fontSize: 12 }}
-                      label={{
-                        value: "Rating",
-                        angle: -90,
-                        position: "insideLeft",
-                      }}
-                    />
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        className="opacity-30"
+                      />
 
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                        fontSize: "14px",
-                      }}
-                      formatter={(value, name) => [`${value}`, "Rating"]}
-                      labelFormatter={(label) => `Contest #${label}`}
-                    />
+                      <XAxis
+                        dataKey="contestNumber"
+                        className="text-xs"
+                        tick={{ fontSize: 12 }}
+                        label={{
+                          value: "Contest",
+                          position: "insideBottom",
+                          offset: -5,
+                        }}
+                        interval={4}
+                      />
 
-                    <Area
-                      type="monotone"
-                      dataKey="rating"
-                      stroke="#3b82f6"
-                      strokeWidth={2}
-                      fill="url(#ratingGradient)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="flex justify-between items-center mt-4 pt-4 border-t text-sm text-muted-foreground">
-                <div>
-                  Peak Rating:{" "}
-                  <span className="font-medium text-foreground">
-                    {UserData?.codeforces_info.maxRating}
-                  </span>
+                      <YAxis
+                        domain={["0", "dataMax + 200"]}
+                        className="text-xs"
+                        tick={{ fontSize: 12 }}
+                        label={{
+                          value: "Rating",
+                          angle: -90,
+                          position: "insideLeft",
+                        }}
+                      />
+
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                          fontSize: "14px",
+                        }}
+                        formatter={(value, name) => [`${value}`, "Rating"]}
+                        labelFormatter={(label) => `Contest #${label}`}
+                      />
+
+                      <Area
+                        type="monotone"
+                        dataKey="rating"
+                        stroke="#3b82f6"
+                        strokeWidth={2}
+                        fill="url(#ratingGradient)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </div>
-                <div>
-                  Last Rating Change:{" "}
-                  <span
-                    className={`font-medium ${
-                      calculateLastChange(moreInfo.ratingData)[0] == "+"
-                        ? "text-green-600"
-                        : "text-red-500"
-                    }`}
-                  >
-                    {calculateLastChange(moreInfo.ratingData)}
-                  </span>
+                <div className="flex justify-between items-center mt-4 pt-4 border-t text-sm text-muted-foreground">
+                  <div>
+                    Peak Rating:{" "}
+                    <span className="font-medium text-foreground">
+                      {UserData?.codeforces_info.maxRating}
+                    </span>
+                  </div>
+                  <div>
+                    Last Rating Change:{" "}
+                    <span
+                      className={`font-medium ${
+                        calculateLastChange(moreInfo.ratingData)[0] == "+"
+                          ? "text-green-600"
+                          : "text-red-500"
+                      }`}
+                    >
+                      {calculateLastChange(moreInfo.ratingData)}
+                    </span>
+                  </div>
+                  <div>
+                    Total Contests:{" "}
+                    <span className="font-medium text-foreground">
+                      {moreInfo.ratingData.length - 1}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  Total Contests:{" "}
-                  <span className="font-medium text-foreground">
-                    {moreInfo.ratingData.length-1}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              </CardContent>
+            </Card>
+          ))}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Card className="md:col-span-2 lg:col-span-1">
             <CardHeader>
