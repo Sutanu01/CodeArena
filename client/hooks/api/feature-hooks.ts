@@ -30,7 +30,6 @@ export const useLeaderboardInfo = (pageNumber: number, limitNumber: number) => {
           }
         );
         const data = await res.json();
-        console.log("leaderbaordh data :",data);
         if (!data.success) {
           setResponse({
             success: false,

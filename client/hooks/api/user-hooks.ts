@@ -170,3 +170,56 @@ export const useGetUserInfo = () => {
 
   return { fetchUser, loading, result };
 };
+
+
+export const useUnlinkCodeforcesHandle = () => {
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<ResponseType | null>(null);
+  const unlink = async (userId: string): Promise<ResponseType> => {
+    setLoading(true);
+    try {
+      if (!userId) {
+        const res = {
+          success: false,
+          isError: true,
+          message: "User ID is required to unlink Codeforces handle",
+        };
+        setResult(res);
+        return res;
+      }
+      const response = await fetch(`${server}/api/user/unlink-cf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+
+      const data = await response.json();
+      const res = data.success
+        ? {
+            success: true,
+            isError: false,
+            message: data.message,
+          }
+        : {
+            success: false,
+            isError: true,
+            message: data.message,
+          };
+
+      setResult(res);
+      return res;
+    } catch (error: any) {
+      const res = {
+        success: false,
+        isError: true,
+        message:
+          error.message || "An error occurred while unlinking Codeforces handle",
+      };
+      setResult(res);
+      return res;
+    } finally {
+      setLoading(false);
+    }
+  };
+  return { unlink, loading, result };
+}

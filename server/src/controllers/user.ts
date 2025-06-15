@@ -51,7 +51,6 @@ const handleClerkUserChange = TryCatch(
 const getUserData = TryCatch(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { username ,clerkId} = req.query;
-    console.log("Fetching user data with query:", req.query);
     if (clerkId && username) {
       sendResponse(
         400,
@@ -102,4 +101,30 @@ const getUserData = TryCatch(
   }
 );
 
-export { handleClerkUserChange, getUserData };
+const unlinkCodeforces = TryCatch(
+  async(req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const {userId}=req.body;
+    if(!userId) {
+      sendResponse(400, false, "User ID is required", res);
+      return;
+    }
+    const user = await UserModel.findById(userId);
+    if(!user) {
+      sendResponse(404, false, "User not found", res);
+      return;
+    }
+    user.codeforces_info = {
+      username: "",
+      rating: 0,
+      maxRating: 0,
+      rank: "",
+      maxRank: "",
+      solved_ques: [],
+      rating_changes: []
+    };
+    await user.save();
+    sendResponse(200, true, "Codeforces unlinked successfully", res, user);
+  }
+)
+
+export { handleClerkUserChange, getUserData,unlinkCodeforces };

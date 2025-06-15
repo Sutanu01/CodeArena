@@ -54,7 +54,7 @@ export default function HomePage() {
   const { UserData, isCodeforcesVerified } = useSelector(
     (state: RootState) => state.user
   );
-  const { fetchUser, result } = useGetUserInfo();
+  const GetUserInfo = useGetUserInfo();
   const updateCfHook = useUpdateCodeforcesInfo();
   const [isCustomRoomOpen, setIsCustomRoomOpen] = useState(false);
   const [is1v1Mode, set1v1Mode] = useState(false);
@@ -63,7 +63,7 @@ export default function HomePage() {
     losses: 0,
     ratingData: [],
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   //Dashboard Rating Change Calc Func
   const calculateLastChange = (data: { rating: number }[]): string => {
@@ -76,10 +76,9 @@ export default function HomePage() {
       : `${lastRating - secondLastRating}`;
   };
 
-  //More like updating client side user data or fetching data
-  //if user had cf verified, updates cf status
+
   const updateUser = async () => {
-    const resp = await fetchUser(user?.id || ""); //uses clerk id to fetch user
+    const resp = await GetUserInfo.fetchUser(user?.id || ""); //uses clerk id to fetch user
     if (resp.success) {
       dispatch(setUserData(resp.data));
       if (UserData?.total_matches == 0)
@@ -97,7 +96,6 @@ export default function HomePage() {
           ratingData: moreInfo.ratingData,
         });
       console.log("User data updated:", UserData);
-      toast.success("User data updated");
       if (resp.data?.codeforces_info?.username) {
         setMoreInfo({
           winrate: moreInfo.winrate,
@@ -118,44 +116,44 @@ export default function HomePage() {
       toast.error("Failed to fetch user info:");
     }
   };
-  //generic ahh function for fetching user handle info and updating info on db for user
+
+
   const updateCodeforcesInfo = async () => {
-    const resp = await updateCfHook.update({
+    if(!UserData || !UserData?.codeforces_info?.username){
+       updateUser();
+    }
+    else{
+      const resp = await updateCfHook.update({
       userId: UserData?._id as string, //using mongodb id
       codeforcesId: UserData?.codeforces_info?.username || "",
     });
     if (resp.success) {
       console.log("Codeforces info updated successfully");
-      toast.success("Codeforces info updated successfully");
       updateUser();
     } else {
       console.error(
         "Failed to update Codeforces info:",
         updateCfHook.result?.message || "Unknown error"
       );
-      toast.error("Failed to update Codeforces info:");
+      toast.error("Error fetching Codeforces info");
     }
+    }
+    
   };
-  //so this useeffect gets triggered when a user object from clerk is loaded or cf is verified
-  //1. if cf aint verified it fires fetch data if user had verified cf -> updates isverified -> retriggers useeffect -> this time updates -> cf info on user object on mongo
-  //2. if cf verified (from verification card) , updates cf info on user object on db
 
-  //one issue though when using unlink button on the /home it just sets iscf to false, which triggers the above loop but never deletes cf info from user db
-  // think we need to make a rppute for that
+
   useEffect(() => {
-    setLoading(true);
     if (!isLoaded || !isSignedIn) return;
-    if (isCodeforcesVerified) {
-      updateCodeforcesInfo();
-    } else {
-      updateUser();
-    }
-    setLoading(false);
+    setLoading(true);
+    updateCodeforcesInfo();
   }, [user, isCodeforcesVerified]);
-  //isloaded and user are same becuase, if clerk has loaded itll give user object which will cause useeffect triggering
-  //isSigned is useless ig becaue routes are protected, so if the page is being rendered means theyre signed in anyways
-  //so ig only keeping user and cfverify good enough (idk i maybe wrong huehue)
-
+  
+  useEffect(() => {
+    const isloading =
+      GetUserInfo.loading || updateCfHook.loading;
+      setLoading(isloading);
+  }, [GetUserInfo.loading, updateCfHook.loading]);
+  
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -170,7 +168,8 @@ export default function HomePage() {
                   <h1 className="text-3xl font-extrabold text-blue-900">
                     Welcome back,{" "}
                     <span className="text-blue-500 font-semibold text-5xl">
-                      {UserData?.username}
+                      {UserData?.username.slice(0, 1).toUpperCase().concat(
+                        UserData?.username.slice(1))}
                     </span>
                   </h1>
                 </div>
@@ -425,11 +424,17 @@ export default function HomePage() {
                     data={moreInfo.ratingData}
                     width={600}
                     height={300}
+                    margin={{
+                      top: 0,
+                      right: 15,
+                      left: 0,
+                      bottom: 5,
+                    }}
                   >
                     <defs>
                       <linearGradient
                         id="ratingGradient"
-                        x1="0"
+                        x1="1"
                         y1="0"
                         x2="0"
                         y2="1"
@@ -461,10 +466,11 @@ export default function HomePage() {
                         position: "insideBottom",
                         offset: -5,
                       }}
+                      interval={4}
                     />
 
                     <YAxis
-                      domain={["dataMin - 100", "dataMax + 100"]}
+                      domain={["0", "dataMax + 200"]}
                       className="text-xs"
                       tick={{ fontSize: 12 }}
                       label={{
@@ -517,7 +523,7 @@ export default function HomePage() {
                 <div>
                   Total Contests:{" "}
                   <span className="font-medium text-foreground">
-                    {moreInfo.ratingData.length}
+                    {moreInfo.ratingData.length-1}
                   </span>
                 </div>
               </div>

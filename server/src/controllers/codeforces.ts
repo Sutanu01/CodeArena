@@ -55,6 +55,11 @@ const getSubmissionStatus = TryCatch(async (req: Request, res: Response): Promis
 
 const updateCodeforcesInfo = TryCatch(async (req: Request, res: Response): Promise<void> => {
   const { userId, codeforcesId } = req.body;
+  console.log("Updating Codeforces info for user:", userId, "with Codeforces ID:", codeforcesId);
+  if (!userId || !codeforcesId) {
+    sendResponse(400, false, "User ID and Codeforces ID are required", res);
+    return;
+  }
   const user = await UserModel.findById(userId);
   if (!user) {
     sendResponse(404, false, "User not found", res);
@@ -85,8 +90,6 @@ const updateCodeforcesInfo = TryCatch(async (req: Request, res: Response): Promi
     solved_ques: [],
     rating_changes: [],
   };
-  await user.save();
-
   const submissionsResponse = await fetch(
     `https://codeforces.com/api/user.status?handle=${codeforcesId}&from=1`
   );
@@ -114,8 +117,9 @@ const updateCodeforcesInfo = TryCatch(async (req: Request, res: Response): Promi
       rating: s.problem.rating,
       tags: s.problem.tags,
     }));
+    const diff = submits.length - user.codeforces_info.solved_ques.length;
+    
     user.codeforces_info.solved_ques = submits;
-    await user.save();
 
   const ratingChangesResponse = await fetch(
     `https://codeforces.com/api/user.rating?handle=${codeforcesId}`

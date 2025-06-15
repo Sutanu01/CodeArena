@@ -8,13 +8,35 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { setCodeforcesVerified } from "@/redux/reducers/user";
 import { ThemeToggle } from "./theme-toggle";
 import { ProfileDropdown } from "./profile-dropdown";
+import { useGetUserInfo, useUnlinkCodeforcesHandle } from "@/hooks/api/user-hooks";
+import { useSelector } from "react-redux";
+import { RootState } from "@/redux/store";
+import { toast } from "sonner";
 
 export default function NavbarLinks() {
   const dispatch = useDispatch();
+  const {UserData,isCodeforcesVerified}=useSelector((state:RootState)=>state.user);
   const [openConfirm, setOpenConfirm] = useState(false);
-
-  const handleUnlink = () => {
-    dispatch(setCodeforcesVerified(false));
+  const unlinkCF =useUnlinkCodeforcesHandle();
+  const getUserInfo = useGetUserInfo();
+  const handleUnlink = async () => {
+    const resp = await unlinkCF.unlink(UserData?._id || "");
+    if(resp.success){
+       const id = toast.loading("Unlinking Codeforces account...");
+       const resp = await getUserInfo.fetchUser(UserData?.clerkId || "");
+       if(resp.success){
+         dispatch(setCodeforcesVerified(false));
+         toast.success("Codeforces account unlinked successfully.", { id });
+       }
+       else{
+         toast.error("Failed to fetch updated user info after unlinking.");
+         console.error("Failed to fetch updated user info after unlinking Codeforces account.");
+       }
+    }
+    else{
+      console.error("Failed to unlink Codeforces account.");
+      toast.error("Failed to unlink Codeforces account.");
+    }
     setOpenConfirm(false);
   };
 
@@ -33,13 +55,13 @@ export default function NavbarLinks() {
       </div>
 
       <div className="hidden md:flex items-center space-x-4">
-         <Button
+         {isCodeforcesVerified && <Button
           variant="outline"
           className="text-sm"
           onClick={() => setOpenConfirm(true)}
         >
           Unlink CF
-        </Button>
+        </Button>}
         <ThemeToggle />
         <ProfileDropdown />
       </div>

@@ -1,11 +1,11 @@
-import type React from "react";
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "../globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
-import { ClerkProvider, SignedIn, SignedOut, SignIn } from "@clerk/nextjs";
 import SignInComponent from "@/components/ui/SignIn";
 import { Toaster } from "@/components/ui/sonner";
+import { SignedIn, SignedOut } from "@clerk/nextjs";
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import type React from "react";
+import "../globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -32,7 +32,7 @@ export default function RootLayout({
       </SignedOut>
       <SignedIn>
         {children}
-        <Toaster position="bottom-right" richColors/>
+        <Toaster position="bottom-right" expand={true} richColors/>
       </SignedIn>
     </ThemeProvider>
   );
