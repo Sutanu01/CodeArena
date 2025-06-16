@@ -20,6 +20,8 @@ import { useVerifyCodeforcesHandle } from "@/hooks/api/user-hooks";
 import { setCodeforcesVerified,setCodeforcesHandle } from "@/redux/reducers/user";
 import { useDispatch,useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
+import { removeLocalCache } from "@/lib/utils";
+import { USER_DATA_CACHE_KEY } from "@/lib/cache-keys";
 
 export function CodeforcesVerificationCard() {
   const [isOpen, setIsOpen] = useState(false);
@@ -70,6 +72,7 @@ export function CodeforcesVerificationCard() {
       codeforcesId: handle,
     });
     if (resp.success) {
+      removeLocalCache(USER_DATA_CACHE_KEY);
       dispatch(setCodeforcesHandle(handle));
       setVerified(resp.success);
       dispatch(setCodeforcesVerified(true));

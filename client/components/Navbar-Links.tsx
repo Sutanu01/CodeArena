@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { setCodeforcesVerified } from "@/redux/reducers/user";
+import { resetCodeforcesHandle, setCodeforcesVerified } from "@/redux/reducers/user";
 import { ThemeToggle } from "./theme-toggle";
 import { ProfileDropdown } from "./profile-dropdown";
 import {
@@ -22,6 +22,8 @@ import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { removeLocalCache, setLocalCache } from "@/lib/utils";
+import { USER_DATA_CACHE_KEY } from "@/lib/cache-keys";
 
 export default function NavbarLinks() {
   const dispatch = useDispatch();
@@ -39,6 +41,8 @@ export default function NavbarLinks() {
       const resp = await getUserInfo.fetchUser(UserData?.clerkId || "");
       if (resp.success) {
         dispatch(setCodeforcesVerified(false));
+        dispatch(resetCodeforcesHandle());
+        removeLocalCache(USER_DATA_CACHE_KEY);
         toast.success("Codeforces account unlinked successfully.", { id });
       } else {
         toast.error("Failed to fetch updated user info after unlinking.");

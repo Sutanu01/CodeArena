@@ -1,9 +1,8 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { Code2, Trophy, Users, Zap } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { Code2, Zap, Users, Trophy } from "lucide-react"
-import HeroGeometric from "@/components/hero-geometric"
 
 export default function LandingPage() {
   const router = useRouter()
@@ -65,6 +64,5 @@ export default function LandingPage() {
         </div>
       </div>
     </div>
-    // <HeroGeometric/>
   )
 }

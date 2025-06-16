@@ -32,16 +32,13 @@ const handleClerkUserChange = TryCatch(
           upsert: true,
         }
       );
-      console.log(`User with Clerk ID ${id} updated in database.`);
     } else if (evt.type === "user.deleted") {
       const clerkId = evt.data.id;
       const user = await UserModel.deleteOne({ clerkId });
       if (!user.deletedCount) {
-        console.log(`No user found with Clerk ID ${clerkId} to delete.`);
         sendResponse(404, false, "User not found", res);
         return;
       }
-      console.log(`User with Clerk ID ${clerkId} deleted from database.`);
     }
     sendResponse(200, true, "Webhook processed successfully", res);
     return;

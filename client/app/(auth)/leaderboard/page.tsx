@@ -33,7 +33,7 @@ const Leaderboard = () => {
       case 2:
         return <Medal className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />;
       case 3:
-        return <Award className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />;
+        return <Award className="w-4 h-4 sm:w-5 sm:h-5 text-amber-800" />;
       default:
         return <span className="w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-xs font-bold text-gray-500 dark:text-gray-400">#{rank}</span>;
     }
@@ -46,7 +46,7 @@ const Leaderboard = () => {
       case 2:
         return 'bg-gradient-to-r from-gray-300 to-gray-500 text-white';
       case 3:
-        return 'bg-gradient-to-r from-amber-400 to-amber-600 text-white';
+        return 'bg-gradient-to-r from-amber-600 to-amber-800 text-white';
       default:
         return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
     }
@@ -243,7 +243,7 @@ const Leaderboard = () => {
                     </div>
                     <h3 className="font-bold text-xs sm:text-sm mb-1 truncate">{data.leaderboard[2].username}</h3>
                     <div className="flex items-center justify-center mb-1 sm:mb-2">
-                      <Award className="w-3 h-3 sm:w-4 sm:h-4 text-amber-600 mr-1" />
+                      <Award className="w-3 h-3 sm:w-4 sm:h-4 text-amber-800 mr-1" />
                       <span className="text-xs font-medium">3rd</span>
                     </div>
                     <div className="text-xs text-gray-600 dark:text-gray-400">
@@ -257,7 +257,7 @@ const Leaderboard = () => {
                     </div>
                   </div>
                 </div>
-                <div className="w-16 sm:w-20 h-4 sm:h-6 bg-gradient-to-t from-amber-400 to-amber-600 rounded-t-lg mt-1"></div>
+                <div className="w-16 sm:w-20 h-4 sm:h-6 bg-gradient-to-t from-amber-600 to-amber-800 rounded-t-lg mt-1"></div>
               </div>
             </div>
           </div>

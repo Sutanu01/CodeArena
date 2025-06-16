@@ -31,7 +31,6 @@ const getSubmissionStatus = TryCatch(async (req: Request, res: Response): Promis
     sendResponse(400, false, "Failed to fetch submissions", res);
     return;
   }
-  console.log(data)
   const submissions = data.result
     .filter((s: any) => {
       return (
@@ -48,92 +47,88 @@ const getSubmissionStatus = TryCatch(async (req: Request, res: Response): Promis
       timeTaken: s.timeConsumedMillis,
       memoryUsed: s.memoryConsumedBytes,
     }));
-    console.log(submissions);
   sendResponse(200, true, "Submission status fetched successfully", res, { submissions });
   return;
 });
 
 const updateCodeforcesInfo = TryCatch(async (req: Request, res: Response): Promise<void> => {
   const { userId, codeforcesId } = req.body;
-  console.log("Updating Codeforces info for user:", userId, "with Codeforces ID:", codeforcesId);
+
   if (!userId || !codeforcesId) {
     sendResponse(400, false, "User ID and Codeforces ID are required", res);
     return;
   }
+
   const user = await UserModel.findById(userId);
   if (!user) {
     sendResponse(404, false, "User not found", res);
     return;
   }
 
-  if (!codeforcesId) {
-    sendResponse(400, false, "Codeforces ID is required", res);
-    return;
-  }
+  const [infoRes, submissionsRes, ratingChangesRes] = await Promise.all([
+    fetch(`https://codeforces.com/api/user.info?handles=${codeforcesId}`),
+    fetch(`https://codeforces.com/api/user.status?handle=${codeforcesId}&from=1`),
+    fetch(`https://codeforces.com/api/user.rating?handle=${codeforcesId}`),
+  ]);
 
-  const response = await fetch(
-    `https://codeforces.com/api/user.info?handles=${codeforcesId}`
-  );
-  const data = await response.json();
+  const [infoData, submissionsData, ratingChangesData] = await Promise.all([
+    infoRes.json(),
+    submissionsRes.json(),
+    ratingChangesRes.json(),
+  ]);
 
-  if (data.status !== "OK") {
+  if (infoData.status !== "OK") {
     sendResponse(400, false, "Invalid Codeforces ID", res);
     return;
   }
-
-  user.codeforces_info = {
-    username: codeforcesId,
-    rating: data.result[0].rating,
-    maxRating: data.result[0].maxRating,
-    maxRank: data.result[0].maxRank,
-    rank: data.result[0].rank,
-    solved_ques: [],
-    rating_changes: [],
-  };
-  const submissionsResponse = await fetch(
-    `https://codeforces.com/api/user.status?handle=${codeforcesId}&from=1`
-  );
-  const submissionsData = await submissionsResponse.json();
-  
   if (submissionsData.status !== "OK") {
     sendResponse(400, false, "Failed to fetch submissions", res);
     return;
   }
-
-  const solvedSet = new Set<string>();
-  const submits = submissionsData.result
-    .filter((s: any) => s.verdict === "OK")
-    .filter((s: any) => {
-      const key = String(s.problem.contestId) + s.problem.index;
-      if (solvedSet.has(key)) return false;
-      solvedSet.add(key);
-      return true;
-    })
-    .map((s: any) => ({
-      contestId: s.problem.contestId,
-      name: s.problem.name,
-      questionId: String(s.problem.contestId) + s.problem.index,
-      index: s.problem.index,
-      rating: s.problem.rating,
-      tags: s.problem.tags,
-    }));
-    const diff = submits.length - user.codeforces_info.solved_ques.length;
-    
-    user.codeforces_info.solved_ques = submits;
-
-  const ratingChangesResponse = await fetch(
-    `https://codeforces.com/api/user.rating?handle=${codeforcesId}`
-  );
-  const ratingChangesData = await ratingChangesResponse.json();
-
   if (ratingChangesData.status !== "OK") {
     sendResponse(400, false, "Failed to fetch rating changes", res);
     return;
   }
 
-  user.codeforces_info.rating_changes = [0].concat(
-    ratingChangesData.result.map((change: any) => change.newRating)
-  );
+  const info = infoData.result[0];
+  user.codeforces_info = {
+    username: codeforcesId,
+    rating: info.rating,
+    maxRating: info.maxRating,
+    maxRank: info.maxRank,
+    rank: info.rank,
+    solved_ques: user.codeforces_info?.solved_ques || [],
+    rating_changes: [],
+  };
+
+  const solvedQues = submissionsData.result
+    .filter((s: any) => s.verdict === "OK")
+    .reduce((acc: any[], curr: any) => {
+      const questionId = String(curr.problem.contestId) + curr.problem.index;
+      if (!acc.find((q: any) => q.questionId === questionId)) {
+        acc.push({
+          contestId: curr.problem.contestId,
+          name: curr.problem.name,
+          questionId,
+          index: curr.problem.index,
+          rating: curr.problem.rating,
+          tags: curr.problem.tags,
+        });
+      }
+      return acc;
+    }, []);
+
+  const oldCount = user.codeforces_info.solved_ques.length;
+  const newCount = solvedQues.length;
+  const submissionDiff = newCount - oldCount;
+
+  const newSubmits = solvedQues.slice(0, submissionDiff);
+  if (newSubmits.length > 0) {
+    for (const submit of newSubmits) {
+      user.codeforces_info.solved_ques.push(submit);
+    }
+  }
+  user.codeforces_info.rating_changes = [0, ...ratingChangesData.result.map((r: any) => r.newRating)];
 
   await user.save();
   sendResponse(200, true, "Codeforces info updated successfully", res);

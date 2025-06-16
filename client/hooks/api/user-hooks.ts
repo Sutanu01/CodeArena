@@ -92,7 +92,6 @@ export const useUpdateCodeforcesInfo = () => {
       });
 
       const data = await response.json();
-      console.log("Update Codeforces Info Response:", data);
       const res = data.success
         ? {
             success: true,
@@ -132,8 +131,6 @@ export const useGetUserInfo = () => {
   const fetchUser = async (clerkId: string): Promise<ResponseType> => {
     setLoading(true);
     try {
-        console.log("Fetching user info for Clerk ID:", clerkId);
-        console.log("Server URL:", server);
       const response = await fetch(`${server}/api/user/get-user?clerkId=${clerkId}`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },

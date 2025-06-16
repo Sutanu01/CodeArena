@@ -30,3 +30,7 @@ export function getLocalCache<T>(key: string): T | null {
     return null;
   }
 }
+
+export function removeLocalCache(key: string) {
+  localStorage.removeItem(key);
+}

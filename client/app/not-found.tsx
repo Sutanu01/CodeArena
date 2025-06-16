@@ -1,10 +1,9 @@
 "use client"
 
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Home, Search, ArrowLeft, Code2 } from "lucide-react"
-import NotFoundComp from "@/components/Not-Found"
+import { ArrowLeft, Code2, Home, Search } from "lucide-react"
+import Link from "next/link"
 
 export default function NotFound() {
   return (
@@ -83,6 +82,5 @@ export default function NotFound() {
         </Card>
       </div>
     </div>
-    // <NotFoundComp/>
   )
 }

@@ -21,7 +21,9 @@ import {
   useGetUserInfo,
   useUpdateCodeforcesInfo,
 } from "@/hooks/api/user-hooks";
-import { MoreInfoType } from "@/redux/reducers/schemas";
+import { USER_DATA_CACHE_KEY } from "@/lib/cache-keys";
+import { getLocalCache, setLocalCache } from "@/lib/utils";
+import { MoreInfoType, User } from "@/redux/reducers/schemas";
 import { setCodeforcesVerified, setUserData } from "@/redux/reducers/user";
 import type { RootState } from "@/redux/store";
 import { useUser } from "@clerk/nextjs";
@@ -52,136 +54,115 @@ import {
   YAxis,
 } from "recharts";
 import { toast } from "sonner";
-import { getLocalCache, setLocalCache } from "@/lib/utils";
-import { getLegendProps } from "recharts/types/util/getLegendProps";
 
 export default function HomePage() {
-  const dispatch = useDispatch();
-  const { isLoaded, isSignedIn, user } = useUser();
-  const { UserData, isCodeforcesVerified } = useSelector(
-    (state: RootState) => state.user
-  );
-  const GetUserInfo = useGetUserInfo();
-  const updateCfHook = useUpdateCodeforcesInfo();
-  const [isCustomRoomOpen, setIsCustomRoomOpen] = useState(false);
-  const [is1v1Mode, set1v1Mode] = useState(false);
-  const [moreInfo, setMoreInfo] = useState<MoreInfoType>({
-    winrate: 0,
-    losses: 0,
-    ratingData: [],
+//HOOKs
+const dispatch = useDispatch();
+const { isLoaded, isSignedIn, user } = useUser();
+const { UserData, isCodeforcesVerified } = useSelector(
+  (state: RootState) => state.user
+);
+const GetUserInfo = useGetUserInfo();
+const updateCfHook = useUpdateCodeforcesInfo();
+
+//STATEs
+const [isCustomRoomOpen, setIsCustomRoomOpen] = useState(false);
+const [is1v1Mode, set1v1Mode] = useState(false);
+const [loading, setLoading] = useState(true);
+const [moreInfo, setMoreInfo] = useState<MoreInfoType>({
+  winrate: 0,
+  losses: 0,
+  ratingData: [],
+});
+
+
+const calculateLastChange = (data: { rating: number }[]): string => {
+  if (data.length < 1) return "N/A";
+  if (data.length === 1) return String(data[0].rating);
+
+  const last = data[data.length - 1].rating;
+  const secondLast = data[data.length - 2].rating;
+  const diff = last - secondLast;
+
+  return diff > 0 ? `+${diff}` : `${diff}`;
+};
+
+const updateMoreInfo = (data: User) => {
+  const winrate =
+    data.total_matches === 0
+      ? 0
+      : Math.round((data.total_wins / data.total_matches) * 100);
+
+  const losses = data.total_matches - data.total_wins;
+
+  const ratingChanges =
+    data.codeforces_info?.rating_changes?.map((rating, index) => ({
+      rating,
+      contestNumber: index,
+    })) || [];
+
+  setMoreInfo({ winrate, losses, ratingData: ratingChanges });
+};
+
+const updateUser = async () => {
+  const resp = await GetUserInfo.fetchUser(user?.id || "");
+  if (resp.success) {
+    dispatch(setUserData(resp.data));
+    updateMoreInfo(resp.data);
+    dispatch(setCodeforcesVerified(!!resp.data.codeforces_info?.username));
+    setLocalCache(USER_DATA_CACHE_KEY, resp.data, 10);
+  } else {
+    console.error("Failed to fetch user info:", resp.message);
+    toast.error("Failed to fetch user info");
+  }
+};
+
+const updateCodeforcesInfo = async () => {
+  if (!(UserData?.codeforces_info?.username)) {
+    await updateUser();
+    setLoading(false);
+    return;
+  }
+  const resp = await updateCfHook.update({
+    userId: UserData._id as string,
+    codeforcesId: UserData.codeforces_info.username,
   });
-  const [loading, setLoading] = useState(true);
-  const CACHE_KEY = "user-data-tralala";
+  if (resp.success) {
+    await updateUser();
+  } else {
+    console.error("Failed to update Codeforces info:", updateCfHook.result?.message);
+    toast.error("Error fetching Codeforces info");
+  }
+};
 
-  //Dashboard Rating Change Calc Func
-  const calculateLastChange = (data: { rating: number }[]): string => {
-    if (data.length < 1) return "N/A";
-    else if (data.length < 2) return String(data[data.length - 1].rating);
-    const lastRating = data[data.length - 1].rating;
-    const secondLastRating = data[data.length - 2].rating;
-    return lastRating - secondLastRating > 0
-      ? `+${lastRating - secondLastRating}`
-      : `${lastRating - secondLastRating}`;
-  };
+const handleRefreshCodeforces = () => {
+  if (getLocalCache<User>(USER_DATA_CACHE_KEY)) {
+    toast.info("Wait a few minutes before updating again...");
+    return;
+  }
+  updateCodeforcesInfo();
+};
 
-  const updateUser = async () => {
-    const resp = await GetUserInfo.fetchUser(user?.id || ""); //uses clerk id to fetch user
-    if (resp.success) {
-      console.log("resp data ",resp.data);
-      dispatch(setUserData(resp.data));
-      if (UserData?.total_matches == 0)
-        setMoreInfo({
-          winrate: 0,
-          losses: 0,
-          ratingData: moreInfo.ratingData,
-        });
-      else if (UserData?.total_wins && UserData?.total_matches)
-        setMoreInfo({
-          winrate: Math.round(
-            (UserData?.total_wins / UserData?.total_matches) * 100
-          ),
-          losses: UserData?.total_matches - UserData?.total_wins,
-          ratingData: moreInfo.ratingData,
-        });
-      console.log("User data updated:", UserData);
-      if (resp.data?.codeforces_info?.username) {
-        setMoreInfo({
-          winrate: moreInfo.winrate,
-          losses: moreInfo.losses,
-          ratingData: (UserData?.codeforces_info?.rating_changes ?? []).map(
-            (rating: number, index: number) => ({
-              rating,
-              contestNumber: index,
-            })
-          ),
-        });
-        dispatch(setCodeforcesVerified(true));
-      } else {
-        dispatch(setCodeforcesVerified(false));
-      }
-    } else {
-      console.error("Failed to fetch user info:", resp.message);
-      toast.error("Failed to fetch user info:");
-    }
-  };
-
-  const updateCodeforcesInfo = async () => {
-    if (!UserData || !UserData?.codeforces_info?.username) {
-      updateUser();
-    } else {
-      const resp = await updateCfHook.update({
-        userId: UserData?._id as string, //using mongodb id
-        codeforcesId: UserData?.codeforces_info?.username || "",
-      });
-      if (resp.success) {
-        console.log("Codeforces info updated successfully");
-        updateUser();
-        setLocalCache(CACHE_KEY, UserData, 10);
-      } else {
-        console.error(
-          "Failed to update Codeforces info:",
-          updateCfHook.result?.message || "Unknown error"
-        );
-        toast.error("Error fetching Codeforces info");
-      }
-    }
-  };
-
-  const handleRefreshCodeforces = () => {
-    //this shit workign fine as hell
-    if (getLocalCache(CACHE_KEY)) {
-      toast.info("Wait a Few Minutes before Updating again...");
-      return;
-    }
-    updateCodeforcesInfo(); //didnt add update user, as updateuser() is already in updatecfinfo
-  };
-
-  useEffect(() => {
-    if (!isLoaded || !isSignedIn) return;
-    //Commented out but test this one
-    // const data = getLocalCache(CACHE_KEY);
-    // if (data) {
-    //   console.log("new data",data);
-    //   dispatch(setUserData(data));
-    //   console.log("Redux User state data ",UserData);
-    //   toast.info("Wait a Few Minutes before Updating again...");
-    //   return;
-    // }
-    //bhai fix this shit, we just need to figure out to dispatch this shit ;-;
-    //data is in cache and data is also being printed on console but for some reason, its not dispatching on UserData, its printign null
-    //gpt says is normal redux async issue where the redux state gets updates leter, but due to this the loading isnt being finished even though data is presebt in cachce
-    //run it for yourseld and youll understabd
-    //and yes checking cache here wont cuase issuses, idk if you want explanation ill explain tomorrow
-    //but in short basicallt setLocalCache() is only set after when cf is verified and data fetched , so yeah
-    //good night uwu
+useEffect(() => {
+  if (!isLoaded || !isSignedIn) return;
+  const cached = getLocalCache<User>(USER_DATA_CACHE_KEY);
+  if (cached) {
+    dispatch(setUserData(cached));
+    updateMoreInfo(cached);
+    dispatch(setCodeforcesVerified(!!cached.codeforces_info?.username));
+    setLoading(false);
+  } else {
     updateCodeforcesInfo();
-  }, [user, isCodeforcesVerified]);
+  }
+}, [user, isLoaded, isSignedIn, isCodeforcesVerified]);
 
-  useEffect(() => {
-    const isloading = GetUserInfo.loading || updateCfHook.loading;
-    setLoading(isloading);
-    if (!isloading) toast.success("Data Updated Successfully");
-  }, [GetUserInfo.loading, updateCfHook.loading]);
+useEffect(() => {
+  const isloading = GetUserInfo.loading || updateCfHook.loading;
+  setLoading(isloading);
+  if (!isloading) toast.success("Data Updated Successfully");
+}, [GetUserInfo.loading, updateCfHook.loading]);
+
+
 
   return (
     <div className="min-h-screen bg-background">
