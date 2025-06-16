@@ -120,7 +120,7 @@ export const useUpdateCodeforcesInfo = () => {
     }
   };
 
-  return { update, loading, result };
+  return { update, loading, result,setLoading };
 };
 
 //Fetching User Data from MongoDB using Clerk ID with states for ui management
@@ -165,7 +165,7 @@ export const useGetUserInfo = () => {
     }
   };
 
-  return { fetchUser, loading, result };
+  return { fetchUser, loading, result,setLoading };
 };
 
 

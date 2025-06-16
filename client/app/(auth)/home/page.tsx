@@ -110,7 +110,6 @@ const updateUser = async () => {
     dispatch(setUserData(resp.data));
     updateMoreInfo(resp.data);
     dispatch(setCodeforcesVerified(!!resp.data.codeforces_info?.username));
-    setLocalCache(USER_DATA_CACHE_KEY, resp.data, 10);
   } else {
     console.error("Failed to fetch user info:", resp.message);
     toast.error("Failed to fetch user info");
@@ -129,6 +128,8 @@ const updateCodeforcesInfo = async () => {
   });
   if (resp.success) {
     await updateUser();
+    setLocalCache(USER_DATA_CACHE_KEY, UserData, 10);
+     toast.success("Data Updated Successfully");
   } else {
     console.error("Failed to update Codeforces info:", updateCfHook.result?.message);
     toast.error("Error fetching Codeforces info");
@@ -147,10 +148,11 @@ useEffect(() => {
   if (!isLoaded || !isSignedIn) return;
   const cached = getLocalCache<User>(USER_DATA_CACHE_KEY);
   if (cached) {
+    GetUserInfo.setLoading(false);
+    updateCfHook.setLoading(false);
     dispatch(setUserData(cached));
     updateMoreInfo(cached);
     dispatch(setCodeforcesVerified(!!cached.codeforces_info?.username));
-    setLoading(false);
   } else {
     updateCodeforcesInfo();
   }
@@ -159,7 +161,6 @@ useEffect(() => {
 useEffect(() => {
   const isloading = GetUserInfo.loading || updateCfHook.loading;
   setLoading(isloading);
-  if (!isloading) toast.success("Data Updated Successfully");
 }, [GetUserInfo.loading, updateCfHook.loading]);
 
 
@@ -280,7 +281,7 @@ useEffect(() => {
                     variant="ghost"
                     size="sm"
                     onClick={handleRefreshCodeforces}
-                    className="flex items-center space-x-2 bg-blue-100 text-blue-700 hover:bg-blue-200"
+                    className="flex items-center space-x-2 bg-blue-100 text-blue-900 hover:bg-blue-200 dark:bg-blue-300 dark:hover:bg-blue-400 dark:hover:text-blue-900"
                   >
                     <RefreshCw className="h-5 w-5" />
                     <span className="text-sm font-medium">Refresh</span>
