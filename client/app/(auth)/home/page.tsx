@@ -104,12 +104,15 @@ const updateMoreInfo = (data: User) => {
   setMoreInfo({ winrate, losses, ratingData: ratingChanges });
 };
 
-const updateUser = async () => {
+const updateUser = async (setcache:boolean) => {
   const resp = await GetUserInfo.fetchUser(user?.id || "");
   if (resp.success) {
     dispatch(setUserData(resp.data));
     updateMoreInfo(resp.data);
     dispatch(setCodeforcesVerified(!!resp.data.codeforces_info?.username));
+    if(setcache) {
+      setLocalCache(USER_DATA_CACHE_KEY, resp.data, 10);
+    }
   } else {
     console.error("Failed to fetch user info:", resp.message);
     toast.error("Failed to fetch user info");
@@ -118,7 +121,7 @@ const updateUser = async () => {
 
 const updateCodeforcesInfo = async () => {
   if (!(UserData?.codeforces_info?.username)) {
-    await updateUser();
+    await updateUser(false);
     setLoading(false);
     return;
   }
@@ -127,8 +130,7 @@ const updateCodeforcesInfo = async () => {
     codeforcesId: UserData.codeforces_info.username,
   });
   if (resp.success) {
-    await updateUser();
-    setLocalCache(USER_DATA_CACHE_KEY, UserData, 10);
+    await updateUser(true);
      toast.success("Data Updated Successfully");
   } else {
     console.error("Failed to update Codeforces info:", updateCfHook.result?.message);
