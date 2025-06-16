@@ -31,6 +31,7 @@ export interface User extends Document {
   total_wins: number;
   login_data: Array<boolean>;
   maxStreak: number;
+  daily_login : boolean;
   currentStreak: number;
   match_history?: Array<Match>;
 }
@@ -56,6 +57,7 @@ const UserSchema: Schema = new Schema({
     }],
     rating_changes: [{ type: Number }],
   },
+  daily_login: { type: Boolean, default:false},
   total_matches: { type: Number, default: 0 },
   total_wins: { type: Number, default: 0 },
   login_data: { type: [Boolean], default: () => Array(35).fill(false) },

@@ -12,6 +12,9 @@ import UserRoute from "./routes/UserRoute.js";
 import { socketSetup } from "./socket.js";
 import { connectToDatabase } from "./utils/db.js";
 import { fetchAndStoreQuestionsWeekly } from "./utils/utility.js";
+import initialiseCronJobs from "./utils/cron-jobs.js";
+import UserModel from "./models/User.js";
+
 dotenv.config();
 
 const app = express();
@@ -34,9 +37,10 @@ app.use(ErrorHandler);
 
 await connectToDatabase();
 fetchAndStoreQuestionsWeekly();
-
-
 socketSetup(io);
+initialiseCronJobs();
+
+
 
 app.get('/', (req, res) => {
     res.send("Hello World!");
