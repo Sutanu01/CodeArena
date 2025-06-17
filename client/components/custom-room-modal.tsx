@@ -57,8 +57,10 @@ export function CustomRoomModal({ isOpen, onClose }: CustomRoomModalProps) {
   const [roomCode, setRoomCode] = useState<string>("");
   const [waitingRoom, setWaitingRoom] = useState(false);
   const [opponentJoined, setOpponentJoined] = useState(false);
+  const [userReady, setUserReady] = useState(false);
+  const [opponentReady, setOpponentReady] = useState(false);
   const [bothPlayersReady, setBothPlayersReady] = useState(false);
-  const [countdown, setCountdown] = useState(1000);
+  const [countdown, setCountdown] = useState(5);
   const [copied, setCopied] = useState(false);
   const router = useRouter();
 
@@ -66,11 +68,14 @@ export function CustomRoomModal({ isOpen, onClose }: CustomRoomModalProps) {
   const simulateOpponentJoining = () => {
     setTimeout(() => {
       setOpponentJoined(true);
-      // After opponent joins, simulate both players getting ready
-      setTimeout(() => {
-        setBothPlayersReady(true);
-      }, 2000);
     }, 3000); // Opponent joins after 3 seconds
+  };
+
+  const simulateOpponentReady = () => {
+    // Simulate opponent getting ready after user is ready
+    setTimeout(() => {
+      setOpponentReady(true);
+    }, Math.random() * 3000 + 1000); // Random delay between 1-4 seconds
   };
 
   const handleCreateRoom = async () => {
@@ -91,8 +96,13 @@ export function CustomRoomModal({ isOpen, onClose }: CustomRoomModalProps) {
 
   const handleStartRoom = () => {
     setWaitingRoom(true);
-    setBothPlayersReady(true);
     simulateOpponentJoining();
+  };
+
+  const handleUserReady = () => {
+    setUserReady(true);
+    // Simulate opponent getting ready after user clicks ready
+    simulateOpponentReady();
   };
 
   const handleStartMatch = () => {
@@ -114,6 +124,8 @@ export function CustomRoomModal({ isOpen, onClose }: CustomRoomModalProps) {
     setCopied(false);
     setWaitingRoom(false);
     setOpponentJoined(false);
+    setUserReady(false);
+    setOpponentReady(false);
     setBothPlayersReady(false);
     setCountdown(5);
   };
@@ -123,6 +135,14 @@ export function CustomRoomModal({ isOpen, onClose }: CustomRoomModalProps) {
     onClose();
   };
 
+  // Effect to handle both players ready state
+  useEffect(() => {
+    if (userReady && opponentReady) {
+      setBothPlayersReady(true);
+    }
+  }, [userReady, opponentReady]);
+
+  // Effect to handle countdown when both players are ready
   useEffect(() => {
     let timer: string | number | NodeJS.Timeout | undefined;
     if (bothPlayersReady && countdown > 0) {
@@ -165,8 +185,8 @@ export function CustomRoomModal({ isOpen, onClose }: CustomRoomModalProps) {
                   </div>
                   <div className="flex flex-col items-center">
                     <span>Status</span>
-                    <span className="font-mono font-bold text-sm text-black">
-                      {bothPlayersReady ? "Ready" : "Waiting"}
+                    <span className={`font-mono font-bold text-sm ${userReady ? 'text-green-600' : 'text-black'}`}>
+                      {userReady ? "Ready" : "Not Ready"}
                     </span>
                   </div>
                 </div>
@@ -211,8 +231,8 @@ export function CustomRoomModal({ isOpen, onClose }: CustomRoomModalProps) {
                   </div>
                   <div className="flex flex-col items-center">
                     <span>Status</span>
-                    <span className="font-mono font-bold text-sm text-black">
-                      {bothPlayersReady ? "Ready" : "Waiting"}
+                    <span className={`font-mono font-bold text-sm ${opponentReady ? 'text-green-600' : 'text-black'}`}>
+                      {opponentJoined ? (opponentReady ? "Ready" : "Not Ready") : "---"}
                     </span>
                   </div>
                 </div>
@@ -249,6 +269,33 @@ export function CustomRoomModal({ isOpen, onClose }: CustomRoomModalProps) {
             </Card>
           )}
 
+          {/* Ready Button Section */}
+          {opponentJoined && !bothPlayersReady && (
+            <div className="flex justify-center">
+              <Button
+                onClick={handleUserReady}
+                disabled={userReady}
+                className={`px-6 py-3 transition-all duration-300 ${
+                  userReady 
+                    ? 'bg-green-600 hover:bg-green-600 cursor-not-allowed' 
+                    : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700'
+                }`}
+              >
+                {userReady ? (
+                  <>
+                    <Check className="mr-2 h-4 w-4" />
+                    You're Ready!
+                  </>
+                ) : (
+                  <>
+                    <Target className="mr-2 h-4 w-4" />
+                    I'm Ready
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+
           {opponentJoined && bothPlayersReady && (
             <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 animate-pulse">
               <div className="flex items-center justify-center space-x-2">
@@ -264,12 +311,12 @@ export function CustomRoomModal({ isOpen, onClose }: CustomRoomModalProps) {
             </div>
           )}
 
-          {opponentJoined && !bothPlayersReady && (
+          {opponentJoined && !bothPlayersReady && userReady && !opponentReady && (
             <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
               <div className="flex items-center justify-center space-x-2">
                 <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-400 animate-spin" />
                 <span className="text-yellow-600 dark:text-yellow-400 font-medium text-sm">
-                  Preparing battle arena...
+                  Waiting for opponent to ready up...
                 </span>
               </div>
             </div>

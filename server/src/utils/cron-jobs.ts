@@ -22,10 +22,17 @@ const SetDailyLoginStatus = () =>{
         }
 
     }
-),{timezone: 'Asia/Kolkata'}};
+,{timezone: 'Asia/Kolkata'})};
+
+// const getRenderServerUp = () =>{
+//     cron.schedule('*/2 * * * *',async ()=>{
+//         console.log("Render server is Up");
+//     }
+// ,{timezone: 'Asia/Kolkata'})};
 
 const initialiseCronJobs = () =>{
     SetDailyLoginStatus();
+    // getRenderServerUp();
 };
 
 export default initialiseCronJobs;
