@@ -2,16 +2,16 @@ export type Player = {
   id: string;
   rating: number;
   joinTime: number;
-  queueType: '10min' | '25min' | '40min';
+  queueType: '10' | '25' | '40';
 };
 
 export type Match = [Player, Player];
 
 export class MatchMaker {
   queues: { [key: string]: Player[] } = {
-    '10min': [],
-    '25min': [],
-    '40min': []
+    '10': [],
+    '25': [],
+    '40': []
   };
 
   addPlayer(player: Player) {
@@ -21,7 +21,7 @@ export class MatchMaker {
   matchPlayers(): Match[] {
     const matches: Match[] = [];
 
-    for (const type of ['10min', '25min', '40min']) {
+    for (const type of ['10', '25', '40']) {
       const queue = this.queues[type];
       queue.sort((a, b) => a.joinTime - b.joinTime);
       const matchedIndices = new Set<number>();

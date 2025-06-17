@@ -1,43 +1,53 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Clock,
-  Trophy,
-  Play,
-  CheckCircle,
-  RefreshCw,
-  ExternalLink,
-} from "lucide-react";
-import { useRouter } from "next/navigation";
 import { ProfileDropdown } from "@/components/profile-dropdown";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Timer } from "@/components/Timer";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useGetSubmissionInfo } from "@/hooks/api/contest-hooks";
+import { SubmissionType } from "@/redux/reducers/schemas";
+import { RootState } from "@/redux/store";
+import {
+  Clock,
+  ExternalLink,
+  LoaderCircle,
+  Play,
+  RefreshCw,
+  Trophy,
+  User2Icon,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
+import { toast } from "sonner";
 
 export default function RoomPage() {
   const router = useRouter();
-  const [timeLeft, setTimeLeft] = useState(1800); // 30 minutes
+  const {you,opponent,question, matchType,opponentSocketId } = useSelector((state: RootState) => state.match);
+  const [timeLeft, setTimeLeft] = useState<number>(Number(matchType) * 60); //in seconds
   const [activeTab, setActiveTab] = useState("problem");
-
   useEffect(() => {
+    if(!opponentSocketId) {
+      router.push("/home");
+    }
+    console.log(question);
     const timer = setInterval(() => {
       setTimeLeft((prev) => Math.max(0, prev - 1));
     }, 1000);
 
     return () => clearInterval(timer);
   }, []);
-
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
-
+  const handleLeaveMatch = () => {
+    // Make a modal confirmation here if needed
+  };
   return (
     <div className="h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex flex-col">
       {/* Header */}
@@ -48,6 +58,15 @@ export default function RoomPage() {
               1v1 Battle Room
             </h1>
             <div className="flex items-center space-x-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLeaveMatch}
+                className="bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100"
+              >
+                Leave Match
+              </Button>
+
               <div className="flex items-center space-x-2 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-full shadow-sm border">
                 <Clock className="h-4 w-4 text-muted-foreground" />
                 <span
@@ -91,11 +110,11 @@ export default function RoomPage() {
             </TabsList>
 
             <TabsContent value="problem" className="flex-1 mt-4 overflow-auto">
-              <MainContent />
+              <MainContent  you={you} question={question} opponent={opponent}/>
             </TabsContent>
 
             <TabsContent value="players" className="flex-1 mt-4 overflow-auto">
-              <PlayersSection timeLeft={timeLeft} />
+              <PlayersSection you={you} opponent={opponent} matchType={matchType}/>
             </TabsContent>
           </Tabs>
         </div>
@@ -104,12 +123,12 @@ export default function RoomPage() {
         <div className="hidden lg:grid lg:grid-cols-5 gap-4 h-full">
           {/* Left Sidebar - Player Info */}
           <div className="space-y-3 overflow-auto">
-            <PlayersSection timeLeft={timeLeft} />
+            <PlayersSection you={you} opponent={opponent} matchType={matchType}/>
           </div>
 
           {/* Main Content Area */}
           <div className="lg:col-span-4 flex flex-col space-y-3 overflow-hidden">
-            <MainContent />
+            <MainContent you={you} question={question} opponent={opponent}/>
           </div>
         </div>
       </div>
@@ -117,12 +136,7 @@ export default function RoomPage() {
   );
 }
 
-function PlayersSection({ timeLeft }: { timeLeft: number }) {
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
+function PlayersSection({you,opponent,matchType, timeLeft}: {you?: any, opponent?: any, matchType?: string, timeLeft?: number}) {
   return (
     <div className="space-y-3">
       {/* You - Person1 Info */}
@@ -136,29 +150,23 @@ function PlayersSection({ timeLeft }: { timeLeft: number }) {
         <CardContent className="space-y-2">
           <div className="flex items-center space-x-2">
             <Avatar className="ring-2 ring-green-500 ring-offset-1 w-8 h-8">
-              <AvatarImage src="/placeholder.svg" />
-              <AvatarFallback className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs">
-                SP
+              <AvatarImage src={you?.avatar || undefined} />
+              <AvatarFallback className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs flex items-center justify-center">
+                <User2Icon className="h-4 w-4" />
               </AvatarFallback>
             </Avatar>
             <div>
-              <div className="font-medium text-sm text-slate-900 dark:text-slate-100">
-                Satu ka Pakora
+              <div className="font-extrabold text-xl text-slate-900 dark:text-slate-100">
+                {you?.username || "Player 1"}
               </div>
-              <div className="text-xs text-muted-foreground flex items-center">
+              <div className="font-bold text-sm text-muted-foreground">
+                {you?.codeforces_info.username || "Player 1"}
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground flex items-center">
                 <Trophy className="h-3 w-3 mr-1 text-yellow-500" />
-                1547
+                {you?.codeforces_info?.rating || "N/A"}
               </div>
             </div>
-          </div>
-          <div className="flex items-center justify-between text-xs">
-            <span>Status:</span>
-            <Badge
-              variant="secondary"
-              className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs"
-            >
-              Coding
-            </Badge>
           </div>
         </CardContent>
       </Card>
@@ -172,31 +180,25 @@ function PlayersSection({ timeLeft }: { timeLeft: number }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 space-y-1">
             <Avatar className="ring-2 ring-red-500 ring-offset-1 w-8 h-8">
-              <AvatarImage src="/placeholder.svg" />
+              <AvatarImage src={you?.avatar || undefined} />
               <AvatarFallback className="bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 text-xs">
-                GS
+                <User2Icon className="h-4 w-4" />
               </AvatarFallback>
             </Avatar>
             <div>
-              <div className="font-medium text-sm text-slate-900 dark:text-slate-100">
-                Gojo Satoru
+              <div className="font-extrabold text-xl text-slate-900 dark:text-slate-100">
+                {opponent?.username || "Player 2"}
               </div>
-              <div className="text-xs text-muted-foreground flex items-center">
+              <div className="font-bold text-sm text-muted-foreground">
+                {opponent?.codeforces_info.username || "Player 2"}
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground flex items-center">
                 <Trophy className="h-3 w-3 mr-1 text-yellow-500" />
-                16230
+                {opponent?.codeforces_info?.rating || "N/A"}
               </div>
             </div>
-          </div>
-          <div className="flex items-center justify-between text-xs">
-            <span>Status:</span>
-            <Badge
-              variant="outline"
-              className="border-red-200 text-red-600 dark:border-red-800 dark:text-red-400 text-xs"
-            >
-              Coding
-            </Badge>
           </div>
         </CardContent>
       </Card>
@@ -213,9 +215,19 @@ function PlayersSection({ timeLeft }: { timeLeft: number }) {
             <span>Difficulty:</span>
             <Badge
               variant="secondary"
-              className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300 text-xs"
+              className={
+                matchType == "10"
+                  ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs"
+                  : matchType == "25"
+                  ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300 text-xs"
+                  : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 text-xs"
+              }
             >
-              Medium
+              {matchType == "10"
+                ? "Easy"
+                : matchType == "25"
+                ? "Medium"
+                : "Hard"}
             </Badge>
           </div>
           <div className="flex justify-between">
@@ -225,25 +237,39 @@ function PlayersSection({ timeLeft }: { timeLeft: number }) {
           <div className="flex justify-between">
             <span>Time Limit:</span>
             <span className="font-mono text-slate-600 dark:text-slate-400">
-              30:00
+              {matchType}:00
             </span>
           </div>
         </CardContent>
       </Card>
-      {/*<Timer initialSeconds={1800} /> */}
     </div>
   );
 }
 
-function MainContent() {
+function MainContent({you,opponent,question}: {you?: any, question?: any,opponent?: any }) {
   const handleGotoQuestion = () => {
-    const externalLink = "https://codeforces.com/problemset/problem/1903/A";
+    const externalLink =
+      question?.link || "https://codeforces.com/problemset/problem/1/A";
     window.open(externalLink, "_blank");
   };
-
-  const handleCheckSubmission = () => {
-    // This would check CodeForces for submission status
-    console.log("Checking submission status...");
+  const {fetchSubmission,loading,error,data} = useGetSubmissionInfo();
+  const [submissions, setSubmissions] = useState<SubmissionType[]>([]);
+  const handleCheckSubmission = async () => {
+    const resp = await fetchSubmission(
+      {
+        userId1: you?._id,
+        codeforcesId1: you?.codeforces_info?.username,
+        userId2: opponent?._id,
+        codeforcesId2: opponent?.codeforces_info?.username,
+        contestId: question?.contestId,
+        index: question?.index,
+      }
+    );
+    setSubmissions(resp.data || []);
+    if (resp.error) {
+      toast.error(resp.error);
+      return;
+    }
   };
 
   return (
@@ -267,7 +293,7 @@ function MainContent() {
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="py-2">
+        <CardContent>
           <p className="text-sm text-muted-foreground">
             Click the button above to view the problem statement on CodeForces
             and submit your solution there.
@@ -276,7 +302,7 @@ function MainContent() {
       </Card>
 
       {/* Status of Submissions Section */}
-      <Card className="flex-1 shadow-md  min-h-0 flex flex-col">
+      <Card className="flex-1 shadow-md  min-h-96 flex flex-col">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base font-semibold text-slate-900 dark:text-slate-100">
@@ -285,80 +311,100 @@ function MainContent() {
             <Button
               size="sm"
               onClick={handleCheckSubmission}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm md:text-base transition-colors duration-200 focus:ring-2 focus:ring-blue-400 focus:outline-none flex items-center min-w-[170px]"
             >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh Status
+              {loading ? (
+              <LoaderCircle className="animate-spin mr-2" />
+              ) : (
+              <RefreshCw className="h-4 w-4 mr-2 group-hover:animate-spin transition-transform duration-200" />
+              )}
+              <span className="text-xs sm:text-sm md:text-base group-hover:underline transition-all duration-200">
+              {loading ? "Loading..." : "Refresh Submissions"}
+              </span>
             </Button>
           </div>
         </CardHeader>
-
         <CardContent className="flex-1 overflow-auto">
           <div className="space-y-3">
-            {/* Your Submission Status */}
-            <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-medium text-green-800 dark:text-green-300 text-sm">
-                  Your Submission
-                </span>
-                <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs">
-                  Not Submitted
-                </Badge>
-              </div>
-              <p className="text-xs text-green-700 dark:text-green-400">
-                Waiting for your submission on CodeForces...
-              </p>
-            </div>
-
-            {/* Opponent Submission Status */}
-            <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-medium text-red-800 dark:text-red-300 text-sm">
-                  Opponent's Submission
-                </span>
-                <Badge
-                  variant="outline"
-                  className="border-red-200 text-red-600 dark:border-red-800 dark:text-red-400 text-xs"
+            {submissions.length > 0 ? (
+              submissions.map((submission, index) => (
+                <div
+                  key={index}
+                  className="p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700"
                 >
-                  Not Submitted
-                </Badge>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <span
+                        className="text-xs font-bold px-2 py-0.5 rounded-full"
+                        style={{
+                          backgroundColor:
+                            submission.userId === you?._id
+                              ? "#bbf7d0"
+                              : "#fecaca",
+                          color:
+                            submission.userId === you?._id
+                              ? "#166534"
+                              : "#991b1b",
+                        }}
+                      >
+                        {submission.userId === you?._id ? "You" : "Opponent"}
+                      </span>
+                    </div>
+                    <Badge
+                      variant={
+                        submission.verdict === "OK" ? "default" : "destructive"
+                      }
+                      className="text-xs"
+                    >
+                      {submission.verdict}
+                    </Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                    <span>
+                      <span className="font-semibold">{submission.programmingLanguage}</span>{" "}
+                    </span>
+                    <span className="px-10">
+                      {submission.submission_time}
+                    </span>
+                    <span>
+                      <span className="font-semibold">Passed:</span>{" "}
+                      {submission.passedTestCount}
+                    </span>
+                    <span>
+                      <span className="font-semibold">ExecTime:</span>{" "}
+                      {submission.timeTaken} ms
+                    </span>
+                    <span>
+                      <span className="font-semibold">Mem:</span>{" "}
+                      {submission.memoryUsed} KB
+                    </span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center text-muted-foreground text-sm py-8">
+                No submissions yet. Submit your solution on CodeForces and
+                refresh to see status.
               </div>
-              <p className="text-xs text-red-700 dark:text-red-400">
-                Opponent hasn't submitted yet...
-              </p>
-            </div>
-
-            {/* Instructions */}
-            <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-              <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-2 text-sm">
-                How it works:
-              </h4>
-              <ol className="text-xs text-slate-600 dark:text-slate-400 space-y-1 list-decimal list-inside">
-                <li>
-                  Click "Go to Question" to view the problem on CodeForces
-                </li>
-                <li>Submit your solution on CodeForces platform</li>
-                <li>
-                  Click "Refresh Status" to check if your submission was
-                  accepted
-                </li>
-                <li>First to get an accepted solution wins the round!</li>
-              </ol>
-            </div>
+            )}
           </div>
         </CardContent>
-
-        {/* Submit Button at Bottom */}
-        <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
-          <Button
-            onClick={handleCheckSubmission}
-            className="w-full bg-green-600 hover:bg-green-700 text-white py-2 text-sm font-semibold"
-          >
-            <CheckCircle className="h-4 w-4 mr-2" />
-            Check CodeForces for My Submission
-          </Button>
-        </div>
       </Card>
+      {/* Instructions */}
+      <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+        <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-2 text-sm">
+          How it works:
+        </h4>
+        <ol className="text-xs text-slate-600 dark:text-slate-400 space-y-1 list-decimal list-inside">
+          <li>Click "Go to Question" to view the problem on CodeForces</li>
+          <li>Submit your solution on CodeForces platform</li>
+          <li>
+            Click "Refresh Status" to check if your submission was accepted
+          </li>
+          <li>First to get an accepted solution wins the round!</li>
+        </ol>
+      </div>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ClerkProvider } from "@clerk/nextjs";
+import { SocketProvider } from "@/socket/socket";
 import StoreProvider from "@/redux/StoreProvider";
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,21 +20,23 @@ export default function RootLayout({
 }) {
   return (
     <StoreProvider>
-      <ClerkProvider>
-        <html lang="en" suppressHydrationWarning>
-          <body className={inter.className}>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="system"
-              enableSystem
-              disableTransitionOnChange={true}
-              storageKey="Code Arena-theme"
-            >
-              {children}
-            </ThemeProvider>
-          </body>
-        </html>
-      </ClerkProvider>
+      <SocketProvider>
+        <ClerkProvider>
+          <html lang="en" suppressHydrationWarning>
+            <body className={inter.className}>
+              <ThemeProvider
+                attribute="class"
+                defaultTheme="system"
+                enableSystem
+                disableTransitionOnChange={true}
+                storageKey="Code Arena-theme"
+              >
+                {children}
+              </ThemeProvider>
+            </body>
+          </html>
+        </ClerkProvider>
+      </SocketProvider>
     </StoreProvider>
   );
 }

@@ -39,3 +39,19 @@ export type MoreInfoType = {
   losses: number;
   ratingData: { rating: number; contestNumber: number }[];
 };
+
+export type SubmissionType={
+    userId: string;
+    verdict: string;
+    programmingLanguage: string;
+    submission_time: string;
+    passedTestCount: number;
+    timeTaken: number;
+    memoryUsed: number;
+}
+
+export type questionType = {
+  contestId: number;
+  index: string;
+  link: string;
+};

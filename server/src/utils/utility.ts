@@ -1,4 +1,6 @@
 import QuestionModel from "../models/Question.js";
+import UserModel from "../models/User.js";
+import { TryCatch } from "./features.js";
 
 const fetchAndStoreQuestions = async () => {
   const response = await fetch(
@@ -39,6 +41,70 @@ const fetchAndStoreQuestionsWeekly = () => {
   setInterval(fetchAndStoreQuestions, week);
 };
 
+type GetQuestionParams = {
+  userId1: string;
+  userId2: string;
+  lowerRating?: number;
+  upperRating?: number;
+  tags?: string[];
+};
 
-export { fetchAndStoreQuestionsWeekly };
+export type questionType = {
+  contestId: number;
+  index: string;
+  link: string;
+};
+
+const getUnsolvedQuestionLink = async ({
+  userId1,
+  userId2,
+  lowerRating = 800,
+  upperRating = 3500,
+  tags = [],
+}: GetQuestionParams): Promise<questionType | null> => {
+  const query: any = {
+    rating: { $gte: lowerRating, $lte: upperRating },
+  };
+
+  if (tags && Array.isArray(tags) && tags.length > 0) {
+    query.tags = { $in: tags };
+  }
+
+  const solvedByUser1 = await UserModel.findById(userId1);
+  const solvedByUser2 = await UserModel.findById(userId2);
+
+  if (!solvedByUser1 || !solvedByUser2) return null;
+  
+
+  const unsolvedQuestions = await QuestionModel.find({
+    ...query,
+    questionId: {
+      $nin: [
+        ...solvedByUser1.codeforces_info.solved_ques.map((q: any) => q.questionId),
+        ...solvedByUser2.codeforces_info.solved_ques.map((q: any) => q.questionId),
+      ],
+    },
+  });
+
+  if (unsolvedQuestions.length === 0) return null;
+  
+  const randomIndex = Math.floor(Math.random() * unsolvedQuestions.length);
+  const question = unsolvedQuestions[randomIndex];
+  return {
+    contestId: question.contestId,
+    index: question.index,
+    link: `https://codeforces.com/problemset/problem/${question.contestId}/${question.index}`,
+  };
+};
+
+
+
+
+
+
+
+
+
+
+export { fetchAndStoreQuestionsWeekly,getUnsolvedQuestionLink };
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 const server = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -9,132 +9,70 @@ export type responseType = {
   data?: any;
 };
 
-type GetQuestionParams = {
-  userId1: string;
-  userId2: string;
-  lowerRating: number;
-  upperRating: number;
-  tags: string[];
-};
+export const useGetSubmissionInfo = () => {
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<any>([]);
+  const [error, setError] = useState<string | null>(null);
 
-export const useGetQuestion = ({
-  userId1,
-  userId2,
-  lowerRating,
-  upperRating,
-  tags,
-}: GetQuestionParams) => {
-  const [response, setResponse] = useState<responseType>({
-    success: false,
-    isError: false,
-    message: "",
-    data: null,
-  });
+  async function fetchSubmission({
+    userId1,
+    codeforcesId1,
+    userId2,
+    codeforcesId2,
+    contestId,
+    index,
+  }: {
+    userId1: string;
+    codeforcesId1: string;
+    userId2: string;
+    codeforcesId2: string;
+    contestId: number;
+    index: string;
+  }) {
+    setLoading(true);
+    setError(null);
+    try {
+      const res1 = await fetch(`${server}/api/cf/get-status`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId: userId1, codeforcesId: codeforcesId1, contestId, index }),
+      });
+      const json1 = await res1.json();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch(`${server}/api/cf/get-contest-question`, {
-          method: "POST", // ✅ changed to POST since GET cannot have body
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            userId1,
-            userId2,
-            lowerRating,
-            upperRating,
-            tags,
-          }),
+      const res2 = await fetch(`${server}/api/cf/get-status`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId: userId2, codeforcesId: codeforcesId2, contestId, index }),
+      });
+      const json2 = await res2.json();
+
+      if (!json1.success || !json2.success) {
+        const errMsg = "Failed to fetch submission info";
+        setError(errMsg);
+        setData([]);
+        return { error: errMsg, data: [] };
+      } else {
+        const combinedData = [...json1.data.submissions, ...json2.data.submissions];
+        combinedData.sort((a: any, b: any) => {
+          return new Date(b.submission_time).getTime() - new Date(a.submission_time).getTime();
         });
-        const data = await res.json();
-        if (!data.success) {
-          setResponse({
-            success: false,
-            isError: true,
-            message: data.message,
-          });
-        } else {
-          setResponse({
-            success: true,
-            isError: false,
-            message: data.message,
-            data: data.data,
-          });
-        }
-      } catch (error: any) {
-        setResponse({
-          success: false,
-          isError: true,
-          message:
-            error.message ||
-            "An error occurred while fetching the question",
-        });
+        setData(combinedData);
+        setError(null);
+        return { data: combinedData };
       }
-    };
+    } catch (err: any) {
+      const errMsg = err.message || "An error occurred while fetching submission info";
+      setError(errMsg);
+      setData([]);
+      return { error: errMsg, data: [] };
+    } finally {
+      setLoading(false);
+    }
+  }
 
-    fetchData();
-  }, [userId1, userId2, lowerRating, upperRating, tags]);
-
-  return response;
-};
-
-export const useGetSubmissionInfo = (
-  userId: string,
-  codeforcesId: string,
-  contestId: number,
-  index: string
-) => {
-  const [response, setResponse] = useState<responseType>({
-    success: false,
-    isError: false,
-    message: "",
-    data: null,
-  });
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch(`${server}/api/cf/get-status`, {
-          method: "POST", // ✅ changed to POST since GET cannot have body
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            userId,
-            codeforcesId,
-            contestId,
-            index,
-          }),
-        });
-        const data = await res.json();
-        if (!data.success) {
-          setResponse({
-            success: false,
-            isError: true,
-            message: data.message,
-          });
-        } else {
-          setResponse({
-            success: true,
-            isError: false,
-            message: data.message,
-            data: data.data,
-          });
-        }
-      } catch (error: any) {
-        setResponse({
-          success: false,
-          isError: true,
-          message:
-            error.message ||
-            "An error occurred while fetching submission info",
-        });
-      }
-    };
-
-    fetchData();
-  }, [userId, codeforcesId, contestId, index]);
-
-  return response;
+  return { loading, data, error, fetchSubmission };
 };

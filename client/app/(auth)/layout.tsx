@@ -3,11 +3,8 @@ import SignInComponent from "@/components/ui/SignIn";
 import { Toaster } from "@/components/ui/sonner";
 import { SignedIn, SignedOut } from "@clerk/nextjs";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import type React from "react";
 import "../globals.css";
-
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Code Arena - 1v1 Competitive Programming",

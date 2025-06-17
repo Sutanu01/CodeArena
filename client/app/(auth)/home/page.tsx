@@ -26,6 +26,7 @@ import { getLocalCache, setLocalCache } from "@/lib/utils";
 import { MoreInfoType, User } from "@/redux/reducers/schemas";
 import { setCodeforcesVerified, setUserData } from "@/redux/reducers/user";
 import type { RootState } from "@/redux/store";
+import { useSocket } from "@/socket/socket";
 import { useUser } from "@clerk/nextjs";
 import {
   Calendar,
@@ -56,6 +57,8 @@ import {
 import { toast } from "sonner";
 
 export default function HomePage() {
+
+const {socket} =useSocket();
 //HOOKs
 const dispatch = useDispatch();
 const { isLoaded, isSignedIn, user } = useUser();
@@ -165,6 +168,17 @@ useEffect(() => {
   setLoading(isloading);
 }, [GetUserInfo.loading, updateCfHook.loading]);
 
+useEffect(() => {
+  if (!socket || !UserData) return;
+  const setUser = () => {
+    socket.emit("setUser", UserData);
+  };
+  if (socket.connected) {
+    setUser();
+  } else {
+    socket.once("connect", setUser);
+  }
+}, [socket, UserData]);
 
 
   return (

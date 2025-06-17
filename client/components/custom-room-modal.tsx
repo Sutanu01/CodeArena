@@ -55,7 +55,6 @@ export function CustomRoomModal({ isOpen, onClose }: CustomRoomModalProps) {
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [roomCode, setRoomCode] = useState<string>("");
-  const [waitingRoom, setWaitingRoom] = useState(false);
   const [opponentJoined, setOpponentJoined] = useState(false);
   const [userReady, setUserReady] = useState(false);
   const [opponentReady, setOpponentReady] = useState(false);
@@ -85,6 +84,7 @@ export function CustomRoomModal({ isOpen, onClose }: CustomRoomModalProps) {
 
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
     setRoomCode(code);
+    console.log("Room created with code:", code);
     setIsCreating(false);
   };
 
@@ -94,10 +94,6 @@ export function CustomRoomModal({ isOpen, onClose }: CustomRoomModalProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleStartRoom = () => {
-    setWaitingRoom(true);
-    simulateOpponentJoining();
-  };
 
   const handleUserReady = () => {
     setUserReady(true);
@@ -122,7 +118,6 @@ export function CustomRoomModal({ isOpen, onClose }: CustomRoomModalProps) {
     setIsCreating(false);
     setRoomCode("");
     setCopied(false);
-    setWaitingRoom(false);
     setOpponentJoined(false);
     setUserReady(false);
     setOpponentReady(false);
@@ -156,7 +151,7 @@ export function CustomRoomModal({ isOpen, onClose }: CustomRoomModalProps) {
   }, [bothPlayersReady, countdown]);
 
   if (roomCode) {
-    return waitingRoom ? (
+    return (
       <Modal
         isOpen={isOpen}
         onClose={handleClose}
@@ -411,85 +406,7 @@ export function CustomRoomModal({ isOpen, onClose }: CustomRoomModalProps) {
           </div>
         </div>
       </Modal>
-    ) : (
-      <Modal
-        isOpen={isOpen}
-        onClose={handleClose}
-        title="Room Created!"
-        className="max-w-lg"
-      >
-        <div className="p-6 space-y-6">
-          <div className="text-center space-y-4">
-            <div className="w-16 h-16 mx-auto bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
-              <Check className="h-8 w-8 text-green-600 dark:text-green-400" />
-            </div>
-
-            <div>
-              <h3 className="text-lg font-semibold mb-2">
-                Your room is ready!
-              </h3>
-              <p className="text-muted-foreground text-sm">
-                Share this code with your opponent to start the battle
-              </p>
-            </div>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-sm font-medium">Room Code</Label>
-                    <div className="text-2xl font-mono font-bold tracking-wider">
-                      {roomCode}
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={handleCopyCode}
-                    className="shrink-0"
-                  >
-                    {copied ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Rating:</span>
-                <Badge
-                  className={
-                    ratingBrackets.find((b) => b.label === selectedRating)
-                      ?.color
-                  }
-                >
-                  {selectedRating}
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Topics:</span>
-                <span className="text-right">{selectedTypes.join(", ")}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex space-x-3">
-            <Button variant="outline" onClick={handleClose} className="flex-1">
-              Close
-            </Button>
-            <Button onClick={handleStartRoom} className="flex-1">
-              <Users className="mr-2 h-4 w-4" />
-              Waiting Room
-            </Button>
-          </div>
-        </div>
-      </Modal>
-    );
-  }
+  )}
 
   return (
     <Modal

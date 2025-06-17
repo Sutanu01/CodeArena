@@ -10,20 +10,18 @@ import CodeForcesRoute from "./routes/CodeForcesRoute.js";
 import Features from "./routes/Features.js";
 import UserRoute from "./routes/UserRoute.js";
 import { socketSetup } from "./socket.js";
+import initialiseCronJobs from "./utils/cron-jobs.js";
 import { connectToDatabase } from "./utils/db.js";
 import { fetchAndStoreQuestionsWeekly } from "./utils/utility.js";
-import initialiseCronJobs from "./utils/cron-jobs.js";
-import UserModel from "./models/User.js";
-
 dotenv.config();
+
 
 const app = express();
 const server = createServer(app);
-const io = new Server(server, {
-    cors:corsOptions as CorsOptions
-});
-
 app.use(cors(corsOptions as CorsOptions));
+const io = new Server(server, {
+cors:corsOptions as CorsOptions
+});
 app.post(
     "/api/webhooks/clerk",
     express.raw({ type: "application/json" }),
@@ -51,6 +49,6 @@ app.use('/api/features', Features)
 
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });

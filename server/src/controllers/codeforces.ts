@@ -135,55 +135,5 @@ const updateCodeforcesInfo = TryCatch(async (req: Request, res: Response): Promi
   return;
 });
 
-const getUnsolvedQuestionLink = TryCatch(async (req: Request, res: Response): Promise<void> => {
-  const { userId1, userId2, lowerRating, upperRating, tags } = req.body;
 
-  if (!userId1 || !userId2 || !lowerRating || !upperRating) {
-    sendResponse(400, false, "Missing required fields", res);
-    return;
-  }
-
-  const query: any = {
-    rating: { $gte: lowerRating, $lte: upperRating },
-  };
-
-  if (tags && Array.isArray(tags) && tags.length > 0) {
-    query.tags = { $in: tags };
-  }
-
-  const solvedByUser1 = await UserModel.findById(userId1);
-  const solvedByUser2 = await UserModel.findById(userId2);
-
-  if (!solvedByUser1 || !solvedByUser2) {
-    sendResponse(404, false, "User not found", res);
-    return;
-  }
-
-  const unsolvedQuestions = await QuestionModel.find({
-    ...query,
-    questionId: {
-      $nin: [
-        ...solvedByUser1.codeforces_info.solved_ques.map((q: any) => q.questionId),
-        ...solvedByUser2.codeforces_info.solved_ques.map((q: any) => q.questionId),
-      ],
-    },
-  });
-
-  if (unsolvedQuestions.length === 0) {
-    sendResponse(404, false, "No Questions found with the required tags and rating", res);
-    return;
-  }
-
-  const randomIndex = Math.floor(Math.random() * unsolvedQuestions.length);
-  const question = unsolvedQuestions[randomIndex];
-
-  sendResponse(200, true, "Question found", res, {
-    contestId: question.contestId,
-    index: question.index,
-    question_link: `https://codeforces.com/problemset/problem/${question.contestId}/${question.index}`,
-  });
-  return;
-});
-
-
-export { getUnsolvedQuestionLink, getSubmissionStatus, updateCodeforcesInfo };
+export { getSubmissionStatus, updateCodeforcesInfo };

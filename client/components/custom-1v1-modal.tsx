@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Clock, Users, Zap, Target, Shuffle } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useSocket } from "@/socket/socket";
+import { START_MATCHMAKING } from "@/socket/event";
 
 interface OneVsOneModalProps {
   isOpen: boolean;
@@ -44,6 +46,7 @@ const gameModes = [
 ];
 
 export function OneVsOneModal({ isOpen, onClose }: OneVsOneModalProps) {
+  const {socket}=useSocket();
   const [selectedMode, setSelectedMode] = useState<number | null>(null);
   const [useRandomMode, setUseRandomMode] = useState(false);
   const [isMatching, setIsMatching] = useState(false);
@@ -64,6 +67,7 @@ export function OneVsOneModal({ isOpen, onClose }: OneVsOneModalProps) {
 
     setTimeout(() => {
       router.push(`/matching?${params.toString()}`);
+      socket?.emit(START_MATCHMAKING,{mode: String(mode),})
       handleClose();
     }, 1000);
   };
