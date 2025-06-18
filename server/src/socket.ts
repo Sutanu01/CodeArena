@@ -20,25 +20,28 @@ import { getUnsolvedQuestionLink } from "./utils/utility.js";
 let isMatching = false; // Flag to prevent overlapping matchmaking runs
 const matchMaker = new MatchMaker();
 export const userSocketMap: Map<string, User> = new Map();
-export const UserIDSet:Set<string> = new Set();
+export const UserIDSet: Set<string> = new Set();
 
 export const socketSetup = (io: Server) => {
   io.on("connection", (socket: Socket) => {
     
     console.log("A user connected with ID:", socket.id);
-    console.log("QUEUE : ",matchMaker.queues);
+    console.log("QUEUE : ", matchMaker.queues);
+    
     socket.on(SETUSER, (UserData: User) => {
       userSocketMap.set(socket.id, UserData);
     });
     socket.on(START_MATCHMAKING, (info: any) => {
       const user = userSocketMap.get(socket.id);
-      if(!user)return;
+      if (!user) return;
+      
       if (UserIDSet.has(user._id as string)) {
         io.to(socket.id).emit(CANT_MATCHMAKE, {
           error: "You are already in a matchmaking queue or Match",
         });
         return;
       }
+      
       UserIDSet.add(user._id as string);
       if (userSocketMap.get(socket.id)?.codeforces_info.rating) {
         matchMaker.addPlayer({
@@ -58,29 +61,32 @@ export const socketSetup = (io: Server) => {
     socket.on(OPPONENT_READY, ({ to }) => {
       io.to(to).emit(OPPONENT_READY);
     });
-    socket.on(OPPONENT_LEFT,({to,mode})=>{
+    socket.on(OPPONENT_LEFT, ({ to, mode }) => {
       io.to(to).emit(OPPONENT_LEFT);
       const user = userSocketMap.get(socket.id);
       if (!user) return;
       UserIDSet.delete(user._id as string);
-      if(userSocketMap.get(to)?.codeforces_info.rating){
-      matchMaker.addPlayer({
+      if (userSocketMap.get(to)?.codeforces_info.rating) {
+        matchMaker.addPlayer({
           id: to,
           rating: userSocketMap.get(to)?.codeforces_info.rating || 0,
           joinTime: Date.now(),
           queueType: mode,
         });
       }
-    })
+    });
+    
     socket.on(CREATE_ROOM, ({ lowerRating, upperRating, tags }) => {
       const user = userSocketMap.get(socket.id);
-      if(!user)return;
+      if (!user) return;
+      
       if (UserIDSet.has(user._id as string)) {
         io.to(socket.id).emit(CANT_MATCHMAKE, {
           error: "You are already in a matchmaking queue or Match",
         });
         return;
       }
+      
       UserIDSet.add(user._id as string);
       const roomId = createRoom({
         player1_socketId: socket.id,
@@ -90,6 +96,7 @@ export const socketSetup = (io: Server) => {
       });
       io.to(socket.id).emit(CREATE_ROOM, { roomId });
     });
+    
     socket.on(JOIN_ROOM, async ({ roomId }) => {
       const room = await joinRoom({
         player2_socketId: socket.id,
@@ -122,12 +129,13 @@ export const socketSetup = (io: Server) => {
         question: room.question,
       });
     });
-    socket.on(LEFT_ROOM,()=>{
+    
+    socket.on(LEFT_ROOM, () => {
       const user = userSocketMap.get(socket.id);
       if (!user) return;
       UserIDSet.delete(user._id as string);
       removeSocketFromRoom(socket, io);
-    })
+    });
 
     socket.on("disconnect", () => {
       console.log("A user disconnected with ID:", socket.id);
@@ -141,46 +149,76 @@ export const socketSetup = (io: Server) => {
     });
   });
 
-
-
-
+  // Matchmaking interval
   setInterval(async () => {
-  if (isMatching) return;
-  isMatching = true;
-  try {
-    const matches = matchMaker.matchPlayers();
+    if (isMatching) return;
+    isMatching = true;
+    
+    try {
+      const matches = matchMaker.matchPlayers();
+      console.log(`Found ${matches.length} matches`);
 
-    for (const [player1, player2] of matches) {
-      const user1 = userSocketMap.get(player1.id);
-      const user2 = userSocketMap.get(player2.id);
+      for (const [player1, player2] of matches) {
+        const user1 = userSocketMap.get(player1.id);
+        const user2 = userSocketMap.get(player2.id);
 
-      if (user1 && user2) {
-        const question = await getUnsolvedQuestionLink({
-          userId1: user1._id as string,
-          userId2: user2._id as string,
-        });
-        const roomId = Math.random().toString(36).substring(2, 15).toUpperCase();
-        io.to(player1.id).emit(START_CONTEST, {
-          roomId,
-          you: user1,
-          opponent: user2,
-          opponentSocketId: player2.id,
-          question,
-        });
+        if (user1 && user2) {
+          try {
+            const question = await getUnsolvedQuestionLink({
+              userId1: user1._id as string,
+              userId2: user2._id as string,
+            });
+            
+            const roomId = Math.random().toString(36).substring(2, 15).toUpperCase();
+            
+            // Remove players from UserIDSet when they're matched (but keep them in UserIDSet to prevent rejoining queue)
+            // Actually, we should NOT remove them here because they're now in a match
+            // But we should remove them from the matchmaker queue (which is already done in matchPlayers())
+            
+            io.to(player1.id).emit(START_CONTEST, {
+              roomId,
+              you: user1,
+              opponent: user2,
+              opponentSocketId: player2.id,
+              question,
+            });
 
-        io.to(player2.id).emit(START_CONTEST, {
-          roomId,
-          you: user2,
-          opponent: user1,
-          opponentSocketId: player1.id,
-          question,
-        });
+            io.to(player2.id).emit(START_CONTEST, {
+              roomId,
+              you: user2,
+              opponent: user1,
+              opponentSocketId: player1.id,
+              question,
+            });
+            
+            console.log(`Match created: ${player1.id} vs ${player2.id}, Room: ${roomId}`);
+            
+          } catch (questionError) {
+            console.error("Error getting question for match:", questionError);
+            // If we can't get a question, put players back in queue
+            const user1 = userSocketMap.get(player1.id);
+            const user2 = userSocketMap.get(player2.id);
+            
+            if (user1) {
+              UserIDSet.delete(user1._id as string);
+              matchMaker.addPlayer(player1);
+            }
+            if (user2) {
+              UserIDSet.delete(user2._id as string);
+              matchMaker.addPlayer(player2);
+            }
+          }
+        } else {
+          console.log("One or both users not found in userSocketMap");
+          // Clean up if users don't exist
+          if (!user1) matchMaker.removePlayer(player1.id);
+          if (!user2) matchMaker.removePlayer(player2.id);
+        }
       }
+    } catch (error) {
+      console.error("Error during matchmaking:", error);
+    } finally {
+      isMatching = false;
     }
-  } catch (error) {
-    console.error("Error during matchmaking:", error);
-  } finally {
-    isMatching = false;
-  }
-}, 1000);
+  }, 1000);
 };
