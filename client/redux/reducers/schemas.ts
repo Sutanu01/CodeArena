@@ -55,3 +55,45 @@ export type questionType = {
   index: string;
   link: string;
 };
+
+export interface CustomRoomModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+export interface RatingBracketSelectorProps {
+  selectedRating: string;
+  onRatingSelect: (rating: string) => void;
+}
+export interface QuestionTypeSelectorProps {
+  selectedTypes: string[];
+  onTypeToggle: (type: string) => void;
+}
+export interface PlayerCardProps {
+  isUser: boolean;
+  isJoined: boolean;
+  isReady: boolean;
+  User: User | null;
+}
+export interface RoomCodeDisplayProps {
+  roomCode: string;
+  onCopyCode: () => void;
+  copied: boolean;
+}
+
+export interface MatchSpecificationsProps {
+  selectedRating: string;
+  selectedTypes: string[];
+}
+
+export interface JoinCodeModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onJoinRoom: (code: string) => void;
+}
+
+export type matchType = {
+  lowerRating?: number;
+  upperRating?: number;
+  tags?: string[];
+  mode: "10" | "25" | "40";
+}

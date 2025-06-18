@@ -26,6 +26,7 @@ import { getLocalCache, setLocalCache } from "@/lib/utils";
 import { MoreInfoType, User } from "@/redux/reducers/schemas";
 import { setCodeforcesVerified, setUserData } from "@/redux/reducers/user";
 import type { RootState } from "@/redux/store";
+import { SETUSER } from "@/socket/event";
 import { useSocket } from "@/socket/socket";
 import { useUser } from "@clerk/nextjs";
 import {
@@ -171,7 +172,7 @@ useEffect(() => {
 useEffect(() => {
   if (!socket || !UserData) return;
   const setUser = () => {
-    socket.emit("setUser", UserData);
+    socket.emit(SETUSER, UserData);
   };
   if (socket.connected) {
     setUser();

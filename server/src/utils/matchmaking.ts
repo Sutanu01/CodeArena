@@ -11,11 +11,17 @@ export class MatchMaker {
   queues: { [key: string]: Player[] } = {
     '10': [],
     '25': [],
-    '40': []
+    '40': [],
   };
 
   addPlayer(player: Player) {
     this.queues[player.queueType].push(player);
+  }
+
+  removePlayer(socketId: string) {
+    for (const queueType of Object.keys(this.queues)) {
+      this.queues[queueType] = this.queues[queueType].filter(p => p.id !== socketId);
+    }
   }
 
   matchPlayers(): Match[] {
@@ -47,16 +53,20 @@ export class MatchMaker {
             bestMatchScore = ratingDiff;
           }
         }
+
         if (bestMatchIndex !== null) {
           matches.push([player1, queue[bestMatchIndex]]);
           matchedIndices.add(i);
           matchedIndices.add(bestMatchIndex);
         }
       }
+
       this.queues[type] = queue.filter((_, index) => !matchedIndices.has(index));
     }
+
     return matches;
   }
+
   getRatingTolerance(waitTimeMs: number): number {
     const minutes = Math.floor(waitTimeMs / 60000);
     return Math.min(50 + minutes * 5, 200);

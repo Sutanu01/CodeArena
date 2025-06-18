@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { deleteMatch, setMatch } from "@/redux/reducers/match";
 import { User } from "@/redux/reducers/schemas";
-import { END_MATCHMAKING, OPPONENT_LEFT, OPPONENT_READY, START_CONTEST } from "@/socket/event";
+import { CANT_MATCHMAKE, END_MATCHMAKING, OPPONENT_LEFT, OPPONENT_READY, START_CONTEST } from "@/socket/event";
 import { useSocket } from "@/socket/socket";
 import { Check, Clock, Users, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -40,7 +40,7 @@ export default function MatchingPage() {
   const [you, setYou] = useState<User | null>(null);
   const [redirect, setRedirect] = useState(false);
   const { socket } = useSocket();
-  const {opponentSocketId}=useSelector((state: any) => state.match);
+  const {opponentSocketId,roomId}=useSelector((state: any) => state.match);
   const intervalRefs = useRef<{
     tip?: NodeJS.Timeout;
     time?: NodeJS.Timeout;
@@ -70,21 +70,30 @@ export default function MatchingPage() {
     intervalRefs.current.time = timeInterval;
 
     if (socket) {
-      socket.on(START_CONTEST, ({ you, opponent ,opponentSocketId,question}) => {
+      socket.on(START_CONTEST, ({ roomId,you, opponent ,opponentSocketId,question}) => {
         setWaitingRoom(true);
         setYou(you);
         setOpponent(opponent);
         dispatch(
           setMatch({
+            roomId,
             you,
             opponent,
             opponentSocketId,
-            matchType: mode as "10" | "25" | "40",
+            matchType: {
+              mode: mode as "10" | "25" | "40",
+            },
             question,
           })
         );
       });
 
+      socket.on(CANT_MATCHMAKE, (data: { error: string }) => {
+            cleanUp();
+            router.push("/home");
+            alert(data.error);
+          });
+          
       socket.on(OPPONENT_READY, () => {
         setOpponentReady(true);
       });
@@ -127,7 +136,7 @@ export default function MatchingPage() {
 
   useEffect(() => {
     if (redirect) {
-      router.push("/room");
+      router.push(`/room?roomId=${roomId}&mode=${mode}`);
     }
   }, [redirect, router]);
 

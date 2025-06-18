@@ -1,6 +1,14 @@
+export const SETUSER = "SETUSER";
 export const START_CONTEST ="START_CONTEST";
 export const END_CONTEST = "END_CONTEST";
 export const START_MATCHMAKING = "START_MATCHMAKING";
 export const END_MATCHMAKING = "END_MATCHMAKING";
 export const OPPONENT_READY = "OPPONENT_READY";
 export const OPPONENT_LEFT = "OPPONENT_LEFT";
+export const CREATE_ROOM = "CREATE_ROOM";
+export const JOIN_ROOM = "JOIN_ROOM";
+export const CANT_JOIN_ROOM = "CANT_JOIN_ROOM";
+export const LEFT_ROOM = "LEFT_ROOM";
+export const OPPONENT_LEFT_ROOM = "OPPONENT_LEFT_ROOM";
+export const ROOM_DISBAND = "ROOM_DISBAND";
+export const CANT_MATCHMAKE = "CANT_MATCHMAKE";

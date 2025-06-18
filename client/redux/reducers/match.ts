@@ -1,11 +1,12 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { questionType, User } from "./schemas";
+import { matchType, questionType, User } from "./schemas";
 
 const initialState = {
+  roomId: null as string | null,
   you: null as User | null,
   opponent: null as User | null,
   opponentSocketId: null as string | null,
-  matchType: "10" as "10" | "25" | "40",
+  matchType: null as matchType | null,
   question: null as questionType | null,
 };
 
@@ -14,6 +15,7 @@ const matchSlice = createSlice({
   initialState,
   reducers: {
     setMatch(state, action) {
+      state.roomId = action.payload.roomId;
       state.you = action.payload.you;
       state.opponent = action.payload.opponent;
       state.opponentSocketId = action.payload.opponentSocketId;
@@ -21,10 +23,11 @@ const matchSlice = createSlice({
       state.question = action.payload.question;
     },
     deleteMatch(state) {
+      state.roomId = null;
       state.you = null;
       state.opponent = null;
       state.opponentSocketId = null;
-      state.matchType = "10";
+      state.matchType = null;
       state.question = null;
     },
   },

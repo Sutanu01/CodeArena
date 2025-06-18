@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useGetSubmissionInfo } from "@/hooks/api/contest-hooks";
-import { SubmissionType } from "@/redux/reducers/schemas";
+import { matchType, SubmissionType } from "@/redux/reducers/schemas";
 import { RootState } from "@/redux/store";
 import {
   Clock,
@@ -27,23 +27,24 @@ import {
   Trophy,
   User2Icon,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter,useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { toast } from "sonner";
 
 export default function RoomPage() {
   const router = useRouter();
-  const { you, opponent, question, matchType, opponentSocketId } = useSelector(
+  const params = useSearchParams();
+  const { you, opponent, question, matchType, opponentSocketId,roomId } = useSelector(
     (state: RootState) => state.match
   );
-  const [timeLeft, setTimeLeft] = useState<number>(Number(matchType) * 60); //in seconds
+  const [timeLeft, setTimeLeft] = useState<number>(Number(matchType?.mode) * 60); //in seconds
   const [activeTab, setActiveTab] = useState("problem");
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   
   useEffect(() => {
-    if(!opponentSocketId) {
-      router.push("/home");
+    if(params.get("roomId") !== roomId) {
+      router.push("/not-found");
     }
     console.log(question);
     const timer = setInterval(() => {
@@ -140,7 +141,7 @@ export default function RoomPage() {
               <PlayersSection
                 you={you}
                 opponent={opponent}
-                matchType={matchType}
+                matchType={matchType || undefined}
               />
             </TabsContent>
           </Tabs>
@@ -153,7 +154,7 @@ export default function RoomPage() {
             <PlayersSection
               you={you}
               opponent={opponent}
-              matchType={matchType}
+              matchType={matchType || undefined}
             />
           </div>
 
@@ -195,7 +196,7 @@ function PlayersSection({
 }: {
   you?: any;
   opponent?: any;
-  matchType?: string;
+  matchType?: matchType;
   timeLeft?: number;
 }) {
   return (
@@ -277,16 +278,16 @@ function PlayersSection({
             <Badge
               variant="secondary"
               className={
-                matchType == "10"
+                matchType?.mode == "10"
                   ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs"
-                  : matchType == "25"
+                  : matchType?.mode == "25"
                   ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300 text-xs"
                   : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 text-xs"
               }
             >
-              {matchType == "10"
+              {matchType?.mode == "10"
                 ? "Easy"
-                : matchType == "25"
+                : matchType?.mode == "25"
                 ? "Medium"
                 : "Hard"}
             </Badge>
@@ -298,7 +299,7 @@ function PlayersSection({
           <div className="flex justify-between">
             <span>Time Limit:</span>
             <span className="font-mono text-slate-600 dark:text-slate-400">
-              {matchType}:00
+              {matchType?.mode}:00
             </span>
           </div>
         </CardContent>

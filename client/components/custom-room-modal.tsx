@@ -1,25 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Modal } from "@/components/ui/modal";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Copy, Check, Users, Settings, Clock, Target, Zap, UserPlus } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Modal } from "@/components/ui/modal";
+import { deleteMatch, setMatch } from "@/redux/reducers/match";
+import { CustomRoomModalProps, JoinCodeModalProps, MatchSpecificationsProps, PlayerCardProps, QuestionTypeSelectorProps, RatingBracketSelectorProps, RoomCodeDisplayProps } from "@/redux/reducers/schemas";
+import { CANT_MATCHMAKE, CREATE_ROOM, JOIN_ROOM, LEFT_ROOM, OPPONENT_LEFT_ROOM, OPPONENT_READY, ROOM_DISBAND, START_CONTEST } from "@/socket/event";
+import { useSocket } from "@/socket/socket";
+import {
+  Check,
+  Clock,
+  Copy,
+  Settings,
+  Target,
+  UserPlus,
+  Users,
+  Zap,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 
-interface CustomRoomModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
 
 const ratingBrackets = [
   {
     label: "Beginner",
     range: "800-1200",
-    color: "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400",
+    color:
+      "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400",
   },
   {
     label: "Intermediate",
@@ -29,7 +40,8 @@ const ratingBrackets = [
   {
     label: "Advanced",
     range: "1600-2000",
-    color: "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400",
+    color:
+      "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400",
   },
   {
     label: "Expert",
@@ -37,25 +49,22 @@ const ratingBrackets = [
     color: "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400",
   },
 ];
-
 const questionTypes = [
-  "Dynamic Programming",
-  "Greedy Algorithms",
-  "Graph Theory",
-  "Tree Algorithms",
-  "String Algorithms",
-  "Number Theory",
-  "Combinatorics",
-  "Data Structures",
+  "dp",
+  "greedy",
+  "graphs",
+  "binary search",
+  "dfs and similar",
+  "trees",
+  "strings",
+  "number theory",
+  "combinatorics",
+  "data structures",
 ];
-
-// Rating Bracket Selection Component
-interface RatingBracketSelectorProps {
-  selectedRating: string;
-  onRatingSelect: (rating: string) => void;
-}
-
-function RatingBracketSelector({ selectedRating, onRatingSelect }: RatingBracketSelectorProps) {
+function RatingBracketSelector({
+  selectedRating,
+  onRatingSelect,
+}: RatingBracketSelectorProps) {
   return (
     <div className="space-y-3">
       <Label className="text-base font-medium">Select Rating Bracket</Label>
@@ -82,14 +91,10 @@ function RatingBracketSelector({ selectedRating, onRatingSelect }: RatingBracket
     </div>
   );
 }
-
-// Question Types Selection Component
-interface QuestionTypeSelectorProps {
-  selectedTypes: string[];
-  onTypeToggle: (type: string) => void;
-}
-
-function QuestionTypeSelector({ selectedTypes, onTypeToggle }: QuestionTypeSelectorProps) {
+function QuestionTypeSelector({
+  selectedTypes,
+  onTypeToggle,
+}: QuestionTypeSelectorProps) {
   return (
     <div className="space-y-3">
       <Label className="text-base font-medium">
@@ -114,27 +119,25 @@ function QuestionTypeSelector({ selectedTypes, onTypeToggle }: QuestionTypeSelec
     </div>
   );
 }
-
-// Player Card Component
-interface PlayerCardProps {
-  isUser: boolean;
-  isJoined: boolean;
-  isReady: boolean;
-  rating?: string;
-}
-
-function PlayerCard({ isUser, isJoined, isReady, rating = "1450" }: PlayerCardProps) {
+function PlayerCard({
+  isUser,
+  isJoined,
+  isReady,
+  User
+}: PlayerCardProps) {
   const opponentRating = "1523";
-  
+  const {UserData} = useSelector((state: any) => state.user);
   return (
     <div className="text-center space-y-2">
       <div className="relative">
         {isUser || isJoined ? (
-          <div className={`w-16 h-16 mx-auto ${
-            isUser 
-              ? "bg-gradient-to-br from-blue-500 to-purple-600" 
-              : "bg-gradient-to-br from-green-500 to-emerald-600"
-          } rounded-full flex items-center justify-center shadow-lg`}>
+          <div
+            className={`w-16 h-16 mx-auto ${
+              isUser
+                ? "bg-gradient-to-br from-blue-500 to-purple-600"
+                : "bg-gradient-to-br from-green-500 to-emerald-600"
+            } rounded-full flex items-center justify-center shadow-lg`}
+          >
             <Users className="h-6 w-6 text-white" />
           </div>
         ) : (
@@ -145,7 +148,7 @@ function PlayerCard({ isUser, isJoined, isReady, rating = "1450" }: PlayerCardPr
       </div>
       <div>
         <h4 className="font-semibold text-base">
-          {isUser ? "You" : (isJoined ? "Challenger" : "Waiting...")}
+          {isUser ? UserData?.username : isJoined ? User?.username : "Waiting..."}
         </h4>
         <p className="text-muted-foreground text-xs">
           {isUser || isJoined ? "Ready to battle" : "Share room code"}
@@ -156,14 +159,25 @@ function PlayerCard({ isUser, isJoined, isReady, rating = "1450" }: PlayerCardPr
           <div className="flex flex-col items-center">
             <span>Current Rating</span>
             <span className="font-mono font-bold text-sm text-black">
-              {isUser ? rating : (isJoined ? opponentRating : "---")}
+              {isUser ? UserData?.codeforces_info.rating : isJoined ? User?.codeforces_info.rating : "---"}
             </span>
           </div>
           <div className="flex flex-col items-center">
             <span>Status</span>
-            <span className={`font-mono font-bold text-sm ${isReady ? 'text-green-600' : 'text-black'}`}>
-              {isUser ? (isReady ? "Ready" : "Not Ready") : 
-               isJoined ? (isReady ? "Ready" : "Not Ready") : "---"}
+            <span
+              className={`font-mono font-bold text-sm ${
+                isReady ? "text-green-600" : "text-black"
+              }`}
+            >
+              {isUser
+                ? isReady
+                  ? "Ready"
+                  : "Not Ready"
+                : isJoined
+                ? isReady
+                  ? "Ready"
+                  : "Not Ready"
+                : "---"}
             </span>
           </div>
         </div>
@@ -171,15 +185,11 @@ function PlayerCard({ isUser, isJoined, isReady, rating = "1450" }: PlayerCardPr
     </div>
   );
 }
-
-// Room Code Display Component
-interface RoomCodeDisplayProps {
-  roomCode: string;
-  onCopyCode: () => void;
-  copied: boolean;
-}
-
-function RoomCodeDisplay({ roomCode, onCopyCode, copied }: RoomCodeDisplayProps) {
+function RoomCodeDisplay({
+  roomCode,
+  onCopyCode,
+  copied,
+}: RoomCodeDisplayProps) {
   return (
     <Card className="border-dashed border-2 bg-muted/20">
       <CardContent className="p-3">
@@ -209,14 +219,13 @@ function RoomCodeDisplay({ roomCode, onCopyCode, copied }: RoomCodeDisplayProps)
     </Card>
   );
 }
+function MatchSpecifications({
+  selectedRating,
+  selectedTypes,
+}: MatchSpecificationsProps) {
+  const mode = selectedRating === "Beginner" ? "10" : selectedRating === "Intermediate" ? "25" : "40";
+  const bracket = ratingBrackets.find((b) => b.label === selectedRating);
 
-// Match Specifications Component
-interface MatchSpecificationsProps {
-  selectedRating: string;
-  selectedTypes: string[];
-}
-
-function MatchSpecifications({ selectedRating, selectedTypes }: MatchSpecificationsProps) {
   return (
     <div className="bg-gradient-to-r from-muted/50 to-muted/30 rounded-xl p-4 space-y-3">
       <div className="flex items-center space-x-2">
@@ -228,25 +237,23 @@ function MatchSpecifications({ selectedRating, selectedTypes }: MatchSpecificati
 
       <div className="grid grid-cols-1 gap-2">
         <div className="flex items-center justify-between">
-          <span className="text-muted-foreground text-xs">
-            Rating Bracket:
-          </span>
+          <span className="text-muted-foreground text-xs">Rating Bracket:</span>
           <Badge
             variant="secondary"
-            className={`${
-              ratingBrackets.find((b) => b.label === selectedRating)?.color
-            } font-medium text-xs`}
+            className={`${bracket ? bracket.color : ""} font-medium text-xs`}
           >
-            {selectedRating || "Not selected"}
+            {bracket
+              ? `${bracket.label} (${bracket.range})`
+              : "Not selected"}
           </Badge>
         </div>
 
         <div className="flex items-start justify-between">
           <span className="text-muted-foreground text-xs">Topics:</span>
           <div className="text-right max-w-xs">
-            {selectedTypes.length > 0 ? (
+            {selectedTypes && selectedTypes.length > 0 ? (
               <div className="flex flex-wrap gap-1 justify-end">
-                {selectedTypes.map((type, index) => (
+                {selectedTypes.map((type: string, index: number) => (
                   <Badge key={index} variant="outline" className="text-xs">
                     {type}
                   </Badge>
@@ -263,30 +270,21 @@ function MatchSpecifications({ selectedRating, selectedTypes }: MatchSpecificati
         <div className="flex items-center justify-between">
           <span className="text-muted-foreground text-xs">Duration:</span>
           <Badge variant="outline" className="text-xs">
-            45 minutes
+            {mode} minutes
           </Badge>
         </div>
       </div>
     </div>
   );
 }
-
-// Join Code Modal Component
-interface JoinCodeModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onJoinRoom: (code: string) => void;
-}
-
 function JoinCodeModal({ isOpen, onClose, onJoinRoom }: JoinCodeModalProps) {
   const [joinCode, setJoinCode] = useState("");
   const [isJoining, setIsJoining] = useState(false);
 
   const handleJoinRoom = async () => {
     if (!joinCode.trim()) return;
-    
+
     setIsJoining(true);
-    // Simulate joining room
     setTimeout(() => {
       onJoinRoom(joinCode.toUpperCase());
       setJoinCode("");
@@ -315,11 +313,10 @@ function JoinCodeModal({ isOpen, onClose, onJoinRoom }: JoinCodeModalProps) {
           <Input
             id="join-code"
             type="text"
-            placeholder="Enter 6-digit code"
+            placeholder="Enter room code"
             value={joinCode}
             onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
             className="text-center font-mono text-lg tracking-wider"
-            maxLength={6}
           />
           <p className="text-xs text-muted-foreground text-center">
             Ask your friend for the 6-digit room code
@@ -352,266 +349,243 @@ function JoinCodeModal({ isOpen, onClose, onJoinRoom }: JoinCodeModalProps) {
     </Modal>
   );
 }
-
-// Main Component
 export function CustomRoomModal({ isOpen, onClose }: CustomRoomModalProps) {
-  const [mode, setMode] = useState<'initial' | 'create' | 'join'>('initial');
+  const [mode, setMode] = useState<"initial" | "create" | "join">("initial");
   const [selectedRating, setSelectedRating] = useState<string>("");
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [roomCode, setRoomCode] = useState<string>("");
   const [opponentJoined, setOpponentJoined] = useState(false);
   const [userReady, setUserReady] = useState(false);
-  const [opponentReady, setOpponentReady] = useState(false);
   const [bothPlayersReady, setBothPlayersReady] = useState(false);
+  const [opponentReady, setOpponentReady] = useState(false);
   const [countdown, setCountdown] = useState(5);
-  const [copied, setCopied] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
-  const [isJoinedRoom, setIsJoinedRoom] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const {roomId,opponentSocketId,you,opponent}=useSelector((state: any) => state.match);
   const router = useRouter();
+  const { socket } = useSocket();
+  const dispatch = useDispatch();
+  let range = { lower: 800, upper: 3500 };
 
-  // Dummy simulation functions
-  const simulateOpponentJoining = () => {
-    setTimeout(() => {
-      setOpponentJoined(true);
-    }, 3000);
-  };
-
-  const simulateOpponentReady = () => {
-    setTimeout(() => {
-      setOpponentReady(true);
-    }, Math.random() * 3000 + 1000);
-  };
-
-  const handleCreateRoom = async () => {
+  const handleCreateRoom = () => {
     if (!selectedRating || selectedTypes.length === 0) return;
-
     setIsCreating(true);
-    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-    setRoomCode(code);
-    setMode('create');
-    console.log("Room created with code:", code);
-    setIsCreating(false);
-    simulateOpponentJoining();
+
+    switch (selectedRating) {
+      case "Beginner":
+        range = { lower: 800, upper: 1200 };
+        break;
+      case "Intermediate":
+        range = { lower: 1200, upper: 1600 };
+        break;
+      case "Advanced":
+        range = { lower: 1600, upper: 2000 };
+        break;
+      case "Expert":
+        range = { lower: 2000, upper: 3500 };
+        break;
+    }
+   
+    socket?.emit(CREATE_ROOM, {
+      lowerRating: range.lower,
+      upperRating: range.upper,
+      tags: selectedTypes,
+    });
   };
+
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on(CREATE_ROOM, (data: { roomId: string }) => {
+      setRoomCode(data.roomId);
+      setIsCreating(false);
+      setMode("create");
+      setOpponentJoined(false);
+      setUserReady(false);
+      setOpponentReady(false);
+    });
+    socket.on(CANT_MATCHMAKE, (data: { error: string }) => {
+      handleClose();
+      router.push("/home");
+      alert(data.error);
+    });
+    socket.on(START_CONTEST, ({ roomId, you, opponent, lowerRating,upperRating,tags,opponentSocketId, question }) => {
+      dispatch(setMatch({
+        roomId,
+        you,
+        opponent,
+        opponentSocketId,
+        question,
+        matchType: {
+          lowerRating,
+          upperRating,
+          tags,
+          mode:lowerRating==800 ? "10" : lowerRating===1200 ? "25" : "40"
+        }
+      }))
+      setOpponentJoined(true);
+      setMode("join");
+      if(lowerRating === 800){
+        setSelectedRating("Beginner");
+      }else if(lowerRating === 1200){
+        setSelectedRating("Intermediate");
+      }
+      else if(lowerRating === 1600){
+        setSelectedRating("Advanced");
+      }
+      else if(lowerRating === 2000){
+        setSelectedRating("Expert");
+      }
+      setSelectedTypes(tags);
+      setRoomCode(roomId);
+    });
+    
+    socket.on(OPPONENT_READY,()=>{
+      setOpponentReady(true);
+    })
+    
+    socket.on(OPPONENT_LEFT_ROOM,()=>{
+      setOpponentJoined(false);
+      setUserReady(false);
+      setOpponentReady(false);
+      setCountdown(5);
+      dispatch(deleteMatch());
+    })
+
+    socket.on(ROOM_DISBAND,()=>{
+      handleClose();
+      dispatch(deleteMatch());
+    })
+
+    return () => {
+      socket.off(CREATE_ROOM);
+      socket.off(START_CONTEST);
+    };
+  }, [socket]);
 
   const handleJoinRoom = (code: string) => {
+    socket?.emit(JOIN_ROOM, { roomId: code });
+    setMode("join");
     setRoomCode(code);
-    setMode('join');
-    setIsJoinedRoom(true);
-    setOpponentJoined(true); // In join mode, the opponent (room creator) is already there
     setShowJoinModal(false);
-    // Simulate getting room specifications (you would fetch these from server)
-    setSelectedRating("Intermediate");
-    setSelectedTypes(["Dynamic Programming", "Graph Theory"]);
+    setOpponentJoined(true);
+    setUserReady(false);
+    setOpponentReady(false);
+    setCountdown(5);
   };
-
-  const handleCopyCode = async () => {
-    await navigator.clipboard.writeText(roomCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleUserReady = () => {
+  const handleUserReady = () =>{
     setUserReady(true);
-    if (!isJoinedRoom) {
-      simulateOpponentReady();
-    } else {
-      // In joined room, simulate host getting ready
-      setTimeout(() => {
-        setOpponentReady(true);
-      }, Math.random() * 2000 + 500);
-    }
-  };
-
+    socket?.emit(OPPONENT_READY, { to: opponentSocketId });
+  }
   const handleStartMatch = () => {
-    router.push(`/room?custom=true&code=${roomCode}`);
+    router.push(`/room?custom=true&roomId=${roomId}`);
+    handleClose();
+  };
+  const handleClose = () => {
+    socket?.emit(LEFT_ROOM)
+    setMode("initial");
+    setSelectedRating("");
+    setSelectedTypes([]);
+    setIsCreating(false);
+    setRoomCode("");
+    setOpponentJoined(false);
+    setUserReady(false);
+    setOpponentReady(false);
+    setCountdown(5);
+    setShowJoinModal(false);
     onClose();
   };
-
   const toggleQuestionType = (type: string) => {
     setSelectedTypes((prev) =>
       prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
     );
   };
-
-  const resetModal = () => {
-    setMode('initial');
-    setSelectedRating("");
-    setSelectedTypes([]);
-    setIsCreating(false);
-    setRoomCode("");
-    setCopied(false);
-    setOpponentJoined(false);
-    setUserReady(false);
-    setOpponentReady(false);
-    setBothPlayersReady(false);
-    setCountdown(5);
-    setShowJoinModal(false);
-    setIsJoinedRoom(false);
-  };
-
-  const handleClose = () => {
-    resetModal();
-    onClose();
-  };
-
-  const handleBackToInitial = () => {
-    setMode('initial');
-    setRoomCode("");
-    setOpponentJoined(false);
-    setUserReady(false);
-    setOpponentReady(false);
-    setBothPlayersReady(false);
-    setCountdown(5);
-    setIsJoinedRoom(false);
-  };
-
-  // Effect to handle both players ready state
   useEffect(() => {
-    if (userReady && opponentReady) {
-      setBothPlayersReady(true);
-    }
-  }, [userReady, opponentReady]);
-
-  // Effect to handle countdown when both players are ready
-  useEffect(() => {
-    let timer: string | number | NodeJS.Timeout | undefined;
+    let timer: NodeJS.Timeout;
+    setBothPlayersReady( userReady && opponentReady && opponentJoined);
+    if(!bothPlayersReady)return;
     if (bothPlayersReady && countdown > 0) {
-      timer = setTimeout(() => {
-        setCountdown((prev) => prev - 1);
-      }, 1000);
+      timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
     } else if (bothPlayersReady && countdown === 0) {
       handleStartMatch();
     }
     return () => clearTimeout(timer);
-  }, [bothPlayersReady, countdown]);
+  }, [userReady,opponentReady,bothPlayersReady, countdown]);
 
-  // Battle Arena Modal (when room is created or joined)
-  if (mode === 'create' || mode === 'join') {
+  // ------------------- Render Logic -------------------
+
+  if (mode === "create" || mode === "join") {
     return (
       <>
-        <Modal
-          isOpen={isOpen}
-          onClose={handleClose}
-          title="Battle Arena"
-          className="max-w-[40rem] max-h-[90vh] overflow-y-auto"
-        >
+        <Modal isOpen={isOpen} onClose={handleClose} title="Battle Arena" className="max-w-[40rem] max-h-[90vh] overflow-y-auto">
           <div className="p-4 space-y-4">
             <div className="grid grid-cols-2 gap-4 relative">
-              <PlayerCard 
-                isUser={true}
-                isJoined={true}
-                isReady={userReady}
-              />
-
+              <PlayerCard isUser={true} isJoined={true} isReady={userReady} User={you}/>
               <div className="absolute left-1/2 top-8 transform -translate-x-1/2 z-10">
                 <div className="w-10 h-10 bg-gradient-to-r from-red-500 to-orange-500 rounded-full flex items-center justify-center shadow-lg animate-pulse">
                   <span className="text-white font-bold text-xs">VS</span>
                 </div>
               </div>
-
-              <PlayerCard 
-                isUser={false}
-                isJoined={opponentJoined}
-                isReady={opponentReady}
-              />
+              <PlayerCard isUser={false} isJoined={opponentJoined} isReady={opponentReady} User={opponent}/>
             </div>
 
-            {!opponentJoined && mode === 'create' && (
-              <RoomCodeDisplay 
+            {mode === "create" && !opponentJoined && (
+              <RoomCodeDisplay
                 roomCode={roomCode}
-                onCopyCode={handleCopyCode}
+                onCopyCode={() => {
+                  navigator.clipboard.writeText(roomCode);
+                  setCopied(true);
+                }}
                 copied={copied}
               />
             )}
-
-            {/* Ready Button Section */}
-            {opponentJoined && !bothPlayersReady && (
-              <div className="flex justify-center">
-                <Button
-                  onClick={handleUserReady}
-                  disabled={userReady}
-                  className={`px-6 py-3 transition-all duration-300 ${
-                    userReady 
-                      ? 'bg-green-600 hover:bg-green-600 cursor-not-allowed' 
-                      : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700'
-                  }`}
-                >
-                  {userReady ? (
-                    <>
-                      <Check className="mr-2 h-4 w-4" />
-                      You're Ready!
-                    </>
-                  ) : (
-                    <>
-                      <Target className="mr-2 h-4 w-4" />
-                      I'm Ready
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
-
-            {/* Status Messages */}
-            {opponentJoined && bothPlayersReady && (
+            {bothPlayersReady && (
               <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 animate-pulse">
                 <div className="flex items-center justify-center space-x-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce"></div>
-                  <span className="text-green-600 dark:text-green-400 font-medium text-sm">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" />
+                  <span className="text-green-600 font-medium text-sm">
                     Both players ready! Match starting in {countdown}s...
                   </span>
-                  <div
-                    className="w-2 h-2 bg-green-500 rounded-full animate-bounce"
-                    style={{ animationDelay: "0.5s" }}
-                  ></div>
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{ animationDelay: "0.5s" }} />
                 </div>
               </div>
             )}
 
-            {opponentJoined && !bothPlayersReady && userReady && !opponentReady && (
+            {opponentJoined && userReady && !opponentReady && (
               <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
                 <div className="flex items-center justify-center space-x-2">
-                  <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-400 animate-spin" />
-                  <span className="text-yellow-600 dark:text-yellow-400 font-medium text-sm">
-                    Waiting for opponent to ready up...
-                  </span>
+                  <Clock className="h-4 w-4 text-yellow-600 animate-spin" />
+                  <span className="text-yellow-600 font-medium text-sm">Waiting for opponent to ready up...</span>
                 </div>
               </div>
             )}
 
-            <MatchSpecifications 
-              selectedRating={selectedRating}
-              selectedTypes={selectedTypes}
-            />
+            <MatchSpecifications selectedRating={selectedRating} selectedTypes={selectedTypes} />
 
             <div className="flex space-x-2 pt-2">
-              <Button
-                variant="outline"
-                onClick={handleClose}
-                className="flex-1 hover:bg-destructive hover:text-destructive-foreground text-xs py-2"
-              >
+              <Button variant="outline" onClick={handleClose} className="flex-1 text-xs py-2">
                 Cancel Match
               </Button>
               <Button
-                onClick={handleStartMatch}
-                className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-xs py-2"
-                disabled={!opponentJoined || !bothPlayersReady}
+                onClick={handleUserReady}
+                className="flex-1 text-xs py-2 bg-gradient-to-r from-green-600 to-emerald-600"
+                disabled={userReady}
               >
                 {bothPlayersReady ? (
                   <>
-                    <Zap className="mr-1 h-3 w-3" />
-                    Start Battle
+                  <Zap className="mr-1 h-3 w-3" />
+                  Match is Starting..
                   </>
-                ) : opponentJoined ? (
+                ) : userReady ? (
                   <>
-                    <Clock className="mr-1 h-3 w-3 animate-spin" />
-                    Preparing...
+                  <Check className="mr-1 h-3 w-3" />
+                  You're Ready!
                   </>
                 ) : (
                   <>
-                    <Clock className="mr-1 h-3 w-3" />
-                    Waiting for Opponent
+                  <Clock className="mr-1 h-3 w-3 animate-spin" />
+                  I'm Ready
                   </>
                 )}
               </Button>
@@ -619,53 +593,36 @@ export function CustomRoomModal({ isOpen, onClose }: CustomRoomModalProps) {
           </div>
         </Modal>
 
-        <JoinCodeModal
-          isOpen={showJoinModal}
-          onClose={() => setShowJoinModal(false)}
-          onJoinRoom={handleJoinRoom}
-        />
+        <JoinCodeModal isOpen={showJoinModal} onClose={() => setShowJoinModal(false)} onJoinRoom={handleJoinRoom} />
       </>
     );
   }
 
-  // Initial Modal (Create or Join selection)
+  // ------------------- Initial View -------------------
   return (
     <>
-      <Modal
-        isOpen={isOpen}
-        onClose={handleClose}
-        title="Create Custom Room"
-        className="max-w-2xl"
-      >
+      <Modal isOpen={isOpen} onClose={handleClose} title="Create Custom Room" className="max-w-2xl">
         <div className="p-6 space-y-6">
-          <RatingBracketSelector 
-            selectedRating={selectedRating}
-            onRatingSelect={setSelectedRating}
-          />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto mb-2 border border-primary/40 rounded-lg"
+            onClick={() => setShowJoinModal(true)}
+          >
+            <UserPlus className="mr-1 h-4 w-4" />
+            Join Room with Code
+          </Button>
 
-          <QuestionTypeSelector 
-            selectedTypes={selectedTypes}
-            onTypeToggle={toggleQuestionType}
-          />
+          <RatingBracketSelector selectedRating={selectedRating} onRatingSelect={setSelectedRating} />
+          <QuestionTypeSelector selectedTypes={selectedTypes} onTypeToggle={toggleQuestionType} />
 
-          {/* Action Buttons */}
           <div className="flex space-x-3 pt-4 border-t">
-            <Button 
-              variant="outline" 
-              onClick={() => setShowJoinModal(true)}
-              className="flex-1"
-            >
-              <UserPlus className="mr-2 h-4 w-4" />
-              Join with Code
-            </Button>
             <Button variant="outline" onClick={handleClose} className="flex-1">
               Cancel
             </Button>
             <Button
               onClick={handleCreateRoom}
-              disabled={
-                !selectedRating || selectedTypes.length === 0 || isCreating
-              }
+              disabled={!selectedRating || selectedTypes.length === 0 || isCreating}
               className="flex-1"
             >
               {isCreating ? (
@@ -684,11 +641,7 @@ export function CustomRoomModal({ isOpen, onClose }: CustomRoomModalProps) {
         </div>
       </Modal>
 
-      <JoinCodeModal
-        isOpen={showJoinModal}
-        onClose={() => setShowJoinModal(false)}
-        onJoinRoom={handleJoinRoom}
-      />
+      <JoinCodeModal isOpen={showJoinModal} onClose={() => setShowJoinModal(false)} onJoinRoom={handleJoinRoom} />
     </>
   );
 }
