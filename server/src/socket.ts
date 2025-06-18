@@ -26,6 +26,7 @@ export const socketSetup = (io: Server) => {
   io.on("connection", (socket: Socket) => {
     
     console.log("A user connected with ID:", socket.id);
+    console.log("QUEUE : ",matchMaker.queues);
     socket.on(SETUSER, (UserData: User) => {
       userSocketMap.set(socket.id, UserData);
     });
