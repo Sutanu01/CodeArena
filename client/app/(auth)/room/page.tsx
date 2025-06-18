@@ -7,6 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useGetSubmissionInfo } from "@/hooks/api/contest-hooks";
 import { SubmissionType } from "@/redux/reducers/schemas";
 import { RootState } from "@/redux/store";
@@ -26,9 +34,13 @@ import { toast } from "sonner";
 
 export default function RoomPage() {
   const router = useRouter();
-  const {you,opponent,question, matchType,opponentSocketId } = useSelector((state: RootState) => state.match);
+  const { you, opponent, question, matchType, opponentSocketId } = useSelector(
+    (state: RootState) => state.match
+  );
   const [timeLeft, setTimeLeft] = useState<number>(Number(matchType) * 60); //in seconds
   const [activeTab, setActiveTab] = useState("problem");
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  
   useEffect(() => {
     if(!opponentSocketId) {
       router.push("/home");
@@ -40,14 +52,25 @@ export default function RoomPage() {
 
     return () => clearInterval(timer);
   }, []);
+  
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
+  
   const handleLeaveMatch = () => {
-    // Make a modal confirmation here if needed
+    setShowLeaveModal(true);
   };
+  
+  const confirmLeave = () => {
+    router.push("/home");
+  };
+  
+  const cancelLeave = () => {
+    setShowLeaveModal(false);
+  };
+  
   return (
     <div className="h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex flex-col">
       {/* Header */}
@@ -110,11 +133,15 @@ export default function RoomPage() {
             </TabsList>
 
             <TabsContent value="problem" className="flex-1 mt-4 overflow-auto">
-              <MainContent  you={you} question={question} opponent={opponent}/>
+              <MainContent you={you} question={question} opponent={opponent} />
             </TabsContent>
 
             <TabsContent value="players" className="flex-1 mt-4 overflow-auto">
-              <PlayersSection you={you} opponent={opponent} matchType={matchType}/>
+              <PlayersSection
+                you={you}
+                opponent={opponent}
+                matchType={matchType}
+              />
             </TabsContent>
           </Tabs>
         </div>
@@ -123,20 +150,54 @@ export default function RoomPage() {
         <div className="hidden lg:grid lg:grid-cols-5 gap-4 h-full">
           {/* Left Sidebar - Player Info */}
           <div className="space-y-3 overflow-auto">
-            <PlayersSection you={you} opponent={opponent} matchType={matchType}/>
+            <PlayersSection
+              you={you}
+              opponent={opponent}
+              matchType={matchType}
+            />
           </div>
 
           {/* Main Content Area */}
           <div className="lg:col-span-4 flex flex-col space-y-3 overflow-hidden">
-            <MainContent you={you} question={question} opponent={opponent}/>
+            <MainContent you={you} question={question} opponent={opponent} />
           </div>
         </div>
       </div>
+
+      {/* Leave Match Confirmation Modal */}
+      <Dialog open={showLeaveModal} onOpenChange={setShowLeaveModal}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Leave Match?</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to leave this match? This action cannot be undone and you will forfeit the game.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={cancelLeave}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmLeave}>
+              Leave Match
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-function PlayersSection({you,opponent,matchType, timeLeft}: {you?: any, opponent?: any, matchType?: string, timeLeft?: number}) {
+function PlayersSection({
+  you,
+  opponent,
+  matchType,
+  timeLeft,
+}: {
+  you?: any;
+  opponent?: any;
+  matchType?: string;
+  timeLeft?: number;
+}) {
   return (
     <div className="space-y-3">
       {/* You - Person1 Info */}
@@ -246,25 +307,31 @@ function PlayersSection({you,opponent,matchType, timeLeft}: {you?: any, opponent
   );
 }
 
-function MainContent({you,opponent,question}: {you?: any, question?: any,opponent?: any }) {
+function MainContent({
+  you,
+  opponent,
+  question,
+}: {
+  you?: any;
+  question?: any;
+  opponent?: any;
+}) {
   const handleGotoQuestion = () => {
     const externalLink =
       question?.link || "https://codeforces.com/problemset/problem/1/A";
     window.open(externalLink, "_blank");
   };
-  const {fetchSubmission,loading,error,data} = useGetSubmissionInfo();
+  const { fetchSubmission, loading, error, data } = useGetSubmissionInfo();
   const [submissions, setSubmissions] = useState<SubmissionType[]>([]);
   const handleCheckSubmission = async () => {
-    const resp = await fetchSubmission(
-      {
-        userId1: you?._id,
-        codeforcesId1: you?.codeforces_info?.username,
-        userId2: opponent?._id,
-        codeforcesId2: opponent?.codeforces_info?.username,
-        contestId: question?.contestId,
-        index: question?.index,
-      }
-    );
+    const resp = await fetchSubmission({
+      userId1: you?._id,
+      codeforcesId1: you?.codeforces_info?.username,
+      userId2: opponent?._id,
+      codeforcesId2: opponent?.codeforces_info?.username,
+      contestId: question?.contestId,
+      index: question?.index,
+    });
     setSubmissions(resp.data || []);
     if (resp.error) {
       toast.error(resp.error);
@@ -315,12 +382,12 @@ function MainContent({you,opponent,question}: {you?: any, question?: any,opponen
               className="bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm md:text-base transition-colors duration-200 focus:ring-2 focus:ring-blue-400 focus:outline-none flex items-center min-w-[170px]"
             >
               {loading ? (
-              <LoaderCircle className="animate-spin mr-2" />
+                <LoaderCircle className="animate-spin mr-2" />
               ) : (
-              <RefreshCw className="h-4 w-4 mr-2 group-hover:animate-spin transition-transform duration-200" />
+                <RefreshCw className="h-4 w-4 mr-2 group-hover:animate-spin transition-transform duration-200" />
               )}
               <span className="text-xs sm:text-sm md:text-base group-hover:underline transition-all duration-200">
-              {loading ? "Loading..." : "Refresh Submissions"}
+                {loading ? "Loading..." : "Refresh Submissions"}
               </span>
             </Button>
           </div>
@@ -362,11 +429,11 @@ function MainContent({you,opponent,question}: {you?: any, question?: any,opponen
                   </div>
                   <div className="text-xs text-muted-foreground mt-2 flex flex-wrap gap-x-4 gap-y-1">
                     <span>
-                      <span className="font-semibold">{submission.programmingLanguage}</span>{" "}
+                      <span className="font-semibold">
+                        {submission.programmingLanguage}
+                      </span>{" "}
                     </span>
-                    <span className="px-10">
-                      {submission.submission_time}
-                    </span>
+                    <span className="px-10">{submission.submission_time}</span>
                     <span>
                       <span className="font-semibold">Passed:</span>{" "}
                       {submission.passedTestCount}
