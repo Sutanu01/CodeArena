@@ -95,7 +95,7 @@ export class MatchMaker {
 
   getRatingTolerance(waitTimeMs: number): number {
     const seconds = Math.floor(waitTimeMs / 1000);
-    const tolerance = Math.min(100 + Math.floor(seconds / 5) * 10, 300);
+    const tolerance = Math.min(100 + Math.floor(seconds / 5) * 10, 1000);
     return tolerance;
   }
 
