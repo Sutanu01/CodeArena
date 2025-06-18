@@ -244,7 +244,7 @@ function PlayersSection({
         <CardContent className="space-y-2">
           <div className="flex items-center space-x-2 space-y-1">
             <Avatar className="ring-2 ring-red-500 ring-offset-1 w-8 h-8">
-              <AvatarImage src={you?.avatar || undefined} />
+              <AvatarImage src={opponent?.avatar || undefined} />
               <AvatarFallback className="bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 text-xs">
                 <User2Icon className="h-4 w-4" />
               </AvatarFallback>
