@@ -44,7 +44,7 @@ export default function RoomPage() {
   
   useEffect(() => {
     if(params.get("roomId") !== roomId) {
-      router.push("/not-found");
+      router.push("/debug");
     }
     console.log(question);
     const timer = setInterval(() => {

@@ -5,7 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { deleteMatch, setMatch } from "@/redux/reducers/match";
 import { User } from "@/redux/reducers/schemas";
-import { CANT_MATCHMAKE, END_MATCHMAKING, OPPONENT_LEFT, OPPONENT_READY, START_CONTEST } from "@/socket/event";
+import {
+  CANT_MATCHMAKE,
+  END_MATCHMAKING,
+  OPPONENT_LEFT,
+  OPPONENT_READY,
+  START_CONTEST,
+} from "@/socket/event";
 import { useSocket } from "@/socket/socket";
 import { Check, Clock, Users, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -40,13 +46,13 @@ export default function MatchingPage() {
   const [you, setYou] = useState<User | null>(null);
   const [redirect, setRedirect] = useState(false);
   const { socket } = useSocket();
-  const {opponentSocketId,roomId}=useSelector((state: any) => state.match);
+  const { opponentSocketId, roomId } = useSelector((state: any) => state.match);
   const intervalRefs = useRef<{
     tip?: NodeJS.Timeout;
     time?: NodeJS.Timeout;
     countdown?: NodeJS.Timeout;
   }>({});
-  const cleanUp =()=>{
+  const cleanUp = () => {
     setWaitingRoom(false);
     setYou(null);
     setOpponent(null);
@@ -56,7 +62,7 @@ export default function MatchingPage() {
     setBothReady(false);
     setCountdown(3);
     setShowCountdown(false);
-  }
+  };
   useEffect(() => {
     const tipInterval = setInterval(() => {
       setCurrentTip((prev) => (prev + 1) % tips.length);
@@ -70,37 +76,49 @@ export default function MatchingPage() {
     intervalRefs.current.time = timeInterval;
 
     if (socket) {
-      socket.on(START_CONTEST, ({ roomId,you, opponent ,opponentSocketId,question}) => {
-        setWaitingRoom(true);
-        setYou(you);
-        setOpponent(opponent);
-        dispatch(
-          setMatch({
+      socket.on(
+        START_CONTEST,
+        ({ roomId, you, opponent, opponentSocketId, question }) => {
+          console.log("Received START_CONTEST:", {
             roomId,
-            you,
-            opponent,
+            you: you?.username,
+            opponent: opponent?.username,
             opponentSocketId,
-            matchType: {
-              mode: mode as "10" | "25" | "40",
-            },
-            question,
-          })
-        );
-      });
+          });
+          setWaitingRoom(true);
+          setYou(you);
+          setOpponent(opponent);
+          dispatch(
+            setMatch({
+              roomId,
+              you,
+              opponent,
+              opponentSocketId,
+              matchType: {
+                mode: mode as "10" | "25" | "40",
+              },
+              question,
+            })
+          );
+        }
+      );
 
       socket.on(CANT_MATCHMAKE, (data: { error: string }) => {
-            cleanUp();
-            router.push("/home");
-            alert(data.error);
-          });
-          
+        console.log("Received CANT_MATCHMAKE:", data);
+        cleanUp();
+        router.push("/home");
+        alert(data.error);
+      });
+
       socket.on(OPPONENT_READY, () => {
+        console.log("Received OPPONENT_READY");
         setOpponentReady(true);
       });
 
-      socket.on(OPPONENT_LEFT,()=>{
+      socket.on(OPPONENT_LEFT, () => {
+        console.log("Received OPPONENT_LEFT");
         cleanUp();
-      })
+      });
     }
 
     return () => {
@@ -109,30 +127,32 @@ export default function MatchingPage() {
       if (socket) {
         socket.off(START_CONTEST);
         socket.off(OPPONENT_READY);
+        socket.off(CANT_MATCHMAKE);
+        socket.off(OPPONENT_LEFT); 
       }
     };
-  }, [socket,opponentSocketId]);
+  }, [socket, mode, dispatch, router]);
 
   useEffect(() => {
     const ready = isReady && opponentReady;
     setBothReady(ready);
-    if (!bothReady) return;
-    setBothReady(true);
-    setShowCountdown(true);
-    
-    const countdownInterval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(countdownInterval);
-          setRedirect(true);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    intervalRefs.current.countdown = countdownInterval;
 
-  }, [isReady, opponentReady, bothReady]);
+    if (ready) {
+      setShowCountdown(true);
+
+      const countdownInterval = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(countdownInterval);
+            setRedirect(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      intervalRefs.current.countdown = countdownInterval;
+    }
+  }, [isReady, opponentReady]);
 
   useEffect(() => {
     if (redirect) {
@@ -152,7 +172,7 @@ export default function MatchingPage() {
     socket?.emit(END_MATCHMAKING, { mode });
   }, [router]);
 
-  const handleLeave =()=>{
+  const handleLeave = () => {
     Object.values(intervalRefs.current).forEach((ref) => {
       if (ref) {
         clearInterval(ref);
@@ -161,8 +181,8 @@ export default function MatchingPage() {
     });
     router.push("/home");
     cleanUp();
-    socket?.emit(OPPONENT_LEFT, { to:opponentSocketId ,mode: mode });
-  }
+    socket?.emit(OPPONENT_LEFT, { to: opponentSocketId, mode: mode });
+  };
 
   const handleReady = () => {
     setIsReady(true);
