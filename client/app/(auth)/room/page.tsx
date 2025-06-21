@@ -27,51 +27,110 @@ import {
   Trophy,
   User2Icon,
 } from "lucide-react";
-import { useRouter,useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { toast } from "sonner";
+import { useSocket } from "@/socket/socket";
+import {
+  DRAW_MATCH,
+  LEFT_MATCH,
+  LOSE_MATCH,
+  MATCH_OVER,
+  WIN_MATCH,
+} from "@/socket/event";
+import { deleteMatch } from "@/redux/reducers/match";
+import { Socket } from "socket.io-client";
 
 export default function RoomPage() {
   const router = useRouter();
   const params = useSearchParams();
-  const { you, opponent, question, matchType, opponentSocketId,roomId } = useSelector(
-    (state: RootState) => state.match
-  );
-  const [timeLeft, setTimeLeft] = useState<number>(Number(matchType?.mode) * 60); //in seconds
+  const { you, opponent, question, matchType, opponentSocketId, roomId } =
+    useSelector((state: RootState) => state.match);
+  const [timeLeft, setTimeLeft] = useState<number>(
+    Number(matchType?.mode) * 60
+  ); //in seconds
   const [activeTab, setActiveTab] = useState("problem");
   const [showLeaveModal, setShowLeaveModal] = useState(false);
-  
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [leaveTimer, setLeaveTimer] = useState<number>(60);
+  const [ResultMessage, setResultMessage] = useState<string | undefined>(
+    undefined
+  );
+  const [Result, setResult] = useState<"win" | "lose" | "draw" | null>(null);
+  const { socket } = useSocket();
+  const dispatch = useDispatch();
+
   useEffect(() => {
-    if(params.get("roomId") !== roomId) {
-      router.push("/debug");
+    if (params.get("roomId") !== roomId) {
+      router.push("/not-found");
+      return;
     }
-    console.log(question);
     const timer = setInterval(() => {
-      setTimeLeft((prev) => Math.max(0, prev - 1));
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
 
     return () => clearInterval(timer);
   }, []);
-  
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
-  
-  const handleLeaveMatch = () => {
-    setShowLeaveModal(true);
-  };
-  
+
   const confirmLeave = () => {
+    socket?.emit(LEFT_MATCH);
     router.push("/home");
   };
-  
-  const cancelLeave = () => {
-    setShowLeaveModal(false);
+
+  const handleMatchOver = (
+    result: "win" | "lose" | "draw",
+    message: string | undefined
+  ) => {
+    if (Result) return;
+    setResult(result);
+    setResultMessage(message);
+    setShowResultModal(true);
+    setLeaveTimer(60);
   };
-  
+  const handleReturnToHome = () => {
+    setShowResultModal(false);
+    dispatch(deleteMatch());
+    router.push("/home");
+  };
+  useEffect(() => {
+    if (!showResultModal) return;
+    if (leaveTimer <= 0 && Result !== null) {
+      handleReturnToHome();
+      return;
+    }
+    const timer = setTimeout(() => {
+      setLeaveTimer((prev) => prev - 1);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [leaveTimer, showResultModal, Result]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on(WIN_MATCH, (data?: { message: string }) =>
+      handleMatchOver("win", data?.message)
+    );
+    socket.on(LOSE_MATCH, (data?: { message?: string }) =>
+      handleMatchOver("lose", data?.message)
+    );
+    socket.on(DRAW_MATCH, (data?: { message?: string }) =>
+      handleMatchOver("draw", data?.message)
+    );
+  }, [socket, dispatch, router]);
+
   return (
     <div className="h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex flex-col">
       {/* Header */}
@@ -85,7 +144,7 @@ export default function RoomPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleLeaveMatch}
+                onClick={() => setShowLeaveModal(true)}
                 className="bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100"
               >
                 Leave Match
@@ -134,7 +193,14 @@ export default function RoomPage() {
             </TabsList>
 
             <TabsContent value="problem" className="flex-1 mt-4 overflow-auto">
-              <MainContent you={you} question={question} opponent={opponent} />
+              <MainContent
+                you={you}
+                question={question}
+                opponent={opponent}
+                opponentSocketId={opponentSocketId}
+                timeLeft={timeLeft}
+                socket={socket}
+              />
             </TabsContent>
 
             <TabsContent value="players" className="flex-1 mt-4 overflow-auto">
@@ -160,7 +226,14 @@ export default function RoomPage() {
 
           {/* Main Content Area */}
           <div className="lg:col-span-4 flex flex-col space-y-3 overflow-hidden">
-            <MainContent you={you} question={question} opponent={opponent} />
+            <MainContent
+              you={you}
+              question={question}
+              opponent={opponent}
+              opponentSocketId={opponentSocketId}
+              timeLeft={timeLeft}
+              socket={socket}
+            />
           </div>
         </div>
       </div>
@@ -171,15 +244,59 @@ export default function RoomPage() {
           <DialogHeader>
             <DialogTitle>Leave Match?</DialogTitle>
             <DialogDescription>
-              Are you sure you want to leave this match? This action cannot be undone and you will forfeit the game.
+              Are you sure you want to leave this match? This action cannot be
+              undone and you will forfeit the game.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={cancelLeave}>
+            <Button variant="outline" onClick={() => setShowLeaveModal(false)}>
               Cancel
             </Button>
             <Button variant="destructive" onClick={confirmLeave}>
               Leave Match
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showResultModal} onOpenChange={setShowResultModal}>
+        <DialogContent className="sm:max-w-[400px] pointer-events-none select-none">
+          <DialogHeader>
+            <DialogTitle
+              className={`text-center text-2xl font-bold ${
+                Result === "win"
+                  ? "text-green-600"
+                  : Result === "draw"
+                  ? "text-yellow-600"
+                  : "text-red-600"
+              }`}
+            >
+              {Result === "win"
+                ? "You Win!"
+                : Result === "draw"
+                ? "Draw"
+                : "You Lose"}
+            </DialogTitle>
+            <DialogDescription className="text-center text-base mt-2">
+              {ResultMessage !== undefined
+                ? ResultMessage
+                : Result === "win"
+                ? "Congratulations! You solved the problem first."
+                : Result === "draw"
+                ? "It's a draw! Nobody was able to solve the problem in time."
+                : "Better luck next time! Your opponent solved the problem first."}
+            </DialogDescription>
+            <div className="text-center text-xs text-muted-foreground mt-4">
+              Leaving in {leaveTimer} seconds...
+            </div>
+          </DialogHeader>
+          <DialogFooter className="justify-center pointer-events-auto select-auto">
+            <Button
+              variant="default"
+              onClick={handleReturnToHome}
+              className="mt-2"
+            >
+              Go Back to Home
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -311,19 +428,39 @@ function PlayersSection({
 function MainContent({
   you,
   opponent,
+  opponentSocketId,
   question,
+  timeLeft,
+  socket,
 }: {
   you?: any;
   question?: any;
   opponent?: any;
+  opponentSocketId?: string | null;
+  timeLeft: number;
+  socket: Socket | null;
 }) {
   const handleGotoQuestion = () => {
     const externalLink =
       question?.link || "https://codeforces.com/problemset/problem/1/A";
     window.open(externalLink, "_blank");
   };
-  const { fetchSubmission, loading, error, data } = useGetSubmissionInfo();
+  const { fetchSubmission, loading } = useGetSubmissionInfo();
   const [submissions, setSubmissions] = useState<SubmissionType[]>([]);
+  useEffect(() => {
+    for (let i = 0; i < submissions.length; i++) {
+      if (submissions[i].verdict === "ACCEPTED") {
+        socket?.emit(MATCH_OVER, {
+          acceptedUserId: submissions[i].userId,
+          youId: you?._id,
+          opponentId: opponent?._id,
+          opponentSocketId,
+        });
+        break;
+      }
+    }
+  }, [submissions]);
+
   const handleCheckSubmission = async () => {
     const resp = await fetchSubmission({
       userId1: you?._id,
@@ -339,6 +476,19 @@ function MainContent({
       return;
     }
   };
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      handleCheckSubmission();
+      if (submissions.length === 0) {
+        socket?.emit(MATCH_OVER, {
+          acceptedUserId: null,
+          youId: you?._id,
+          opponentId: opponent?._id,
+          opponentSocketId,
+        });
+      }
+    }
+  }, [timeLeft]);
 
   return (
     <div className="flex flex-col space-y-3 h-full">

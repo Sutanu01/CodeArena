@@ -3,40 +3,78 @@ import {
   CANT_JOIN_ROOM,
   CANT_MATCHMAKE,
   CREATE_ROOM,
+  DRAW_MATCH,
   END_MATCHMAKING,
   JOIN_ROOM,
+  LEFT_MATCH,
   LEFT_ROOM,
+  LOSE_MATCH,
+  MATCH_OVER,
   OPPONENT_LEFT,
   OPPONENT_READY,
   SETUSER,
   START_CONTEST,
   START_MATCHMAKING,
+  STARTED_MATCH,
+  WIN_MATCH,
 } from "./constants/socketEvents.js";
 import { User } from "./models/User.js";
 import { MatchMaker } from "./utils/matchmaking.js";
 import { createRoom, joinRoom, removeSocketFromRoom } from "./utils/room.js";
-import { getUnsolvedQuestionLink } from "./utils/utility.js";
+import { getUnsolvedQuestionLink, updateMatches } from "./utils/utility.js";
 
 let isMatching = false; // Flag to prevent overlapping matchmaking runs
 const matchMaker = new MatchMaker();
 export const userSocketMap: Map<string, User> = new Map();
 export const UserIDSet: Set<string> = new Set();
+export const opponentRoomMap: Map<string, string> = new Map(); //socket id -> socket id
 
 export const socketSetup = (io: Server) => {
   io.on("connection", (socket: Socket) => {
     console.log("A user connected with ID:", socket.id);
 
+    const handleLeaveMatch = async () => {
+      const user = userSocketMap.get(socket.id);
+      if (!user) return;
+
+      if (opponentRoomMap.has(socket.id)) {
+        const opponentSocketId = opponentRoomMap.get(socket.id);
+        const opponentUser = userSocketMap.get(opponentSocketId as string);
+        if (opponentSocketId && opponentUser) {
+          await Promise.all([
+            updateMatches({
+              userId: user._id as string,
+              opponent_name: opponentUser.username,
+              result: "Loss",
+            }),
+            updateMatches({
+              userId: opponentUser._id as string,
+              opponent_name: user.username,
+              result: "Win",
+            }),
+          ]);
+          io.to(opponentSocketId).emit(WIN_MATCH, {
+            message: "Your opponent has left the match.",
+          });
+          opponentRoomMap.delete(opponentSocketId);
+          UserIDSet.delete(opponentUser?._id as string);
+          matchMaker.removePlayer(opponentSocketId);
+        }
+        opponentRoomMap.delete(socket.id);
+        UserIDSet.delete(user._id as string);
+        matchMaker.removePlayer(socket.id);
+      }
+    };
+
     socket.on(SETUSER, (UserData: User) => {
-      console.log(`User ${UserData.username} (${UserData._id}) set on socket ${socket.id}`);
+      console.log("SETUSER called")
       userSocketMap.set(socket.id, UserData);
     });
 
     socket.on(START_MATCHMAKING, (info: any) => {
+      console.log("START_MATCHMAKING called")
       const user = userSocketMap.get(socket.id);
-      if (!user) {
-        console.log(`START_MATCHMAKING: User not found for socket ${socket.id}`);
-        return;
-      }
+      if (!user) return;
 
       if (UserIDSet.has(user._id as string)) {
         io.to(socket.id).emit(CANT_MATCHMAKE, {
@@ -46,8 +84,7 @@ export const socketSetup = (io: Server) => {
       }
 
       UserIDSet.add(user._id as string);
-      console.log(`User ${user.username} added to matchmaking queue`);
-      
+
       if (userSocketMap.get(socket.id)?.codeforces_info.rating) {
         matchMaker.addPlayer({
           id: socket.id,
@@ -59,25 +96,25 @@ export const socketSetup = (io: Server) => {
     });
 
     socket.on(END_MATCHMAKING, (info: any) => {
+      console.log("END_MATCHMAKING called")
       const user = userSocketMap.get(socket.id);
       if (!user) return;
-      console.log(`User ${user.username} ended matchmaking`);
       UserIDSet.delete(user._id as string);
       matchMaker.removePlayer(socket.id);
     });
 
     socket.on(OPPONENT_READY, ({ to }) => {
-      console.log(`OPPONENT_READY signal from ${socket.id} to ${to}`);
+      console.log("OPPONENT_READY called")
       io.to(to).emit(OPPONENT_READY);
     });
 
     socket.on(OPPONENT_LEFT, ({ to, mode }) => {
-      console.log(`OPPONENT_LEFT signal from ${socket.id} to ${to}`);
+      console.log("OPPONENT_LEFT called")
       io.to(to).emit(OPPONENT_LEFT);
       const user = userSocketMap.get(socket.id);
       if (!user) return;
       UserIDSet.delete(user._id as string);
-      
+
       const remainingUser = userSocketMap.get(to);
       if (remainingUser?.codeforces_info.rating) {
         matchMaker.addPlayer({
@@ -90,14 +127,13 @@ export const socketSetup = (io: Server) => {
     });
 
     socket.on(CREATE_ROOM, ({ lowerRating, upperRating, tags }) => {
+      console.log("CREATE_ROOM called")
       const user = userSocketMap.get(socket.id);
       if (!user) {
-        console.log(`CREATE_ROOM: User not found for socket ${socket.id}`);
         return;
       }
 
       if (UserIDSet.has(user._id as string)) {
-        console.log(`CREATE_ROOM: User ${user.username} already in match/queue`);
         io.to(socket.id).emit(CANT_MATCHMAKE, {
           error: "You are already in a matchmaking queue or Match",
         });
@@ -105,31 +141,26 @@ export const socketSetup = (io: Server) => {
       }
 
       UserIDSet.add(user._id as string);
-      console.log(`User ${user.username} creating custom room`);
-      
+
       const roomId = createRoom({
         player1_socketId: socket.id,
         lowerRating: lowerRating,
         upperRating: upperRating,
         tags: tags,
       });
-      
-      console.log(`Room ${roomId} created by ${user.username}`);
+
       io.to(socket.id).emit(CREATE_ROOM, { roomId });
     });
 
     socket.on(JOIN_ROOM, async ({ roomId }) => {
-      console.log(`User ${socket.id} attempting to join room ${roomId}`);
-      
+      console.log("JOIN_ROOM called")
       const user = userSocketMap.get(socket.id);
       if (!user) {
-        console.log(`JOIN_ROOM: User not found for socket ${socket.id}`);
         io.to(socket.id).emit(CANT_JOIN_ROOM, "User not found");
         return;
       }
 
       if (UserIDSet.has(user._id as string)) {
-        console.log(`JOIN_ROOM: User ${user.username} already in match/queue`);
         io.to(socket.id).emit(CANT_JOIN_ROOM, "You are already in a match");
         return;
       }
@@ -139,9 +170,8 @@ export const socketSetup = (io: Server) => {
           player2_socketId: socket.id,
           roomId: roomId,
         });
-        
+
         if (room.error) {
-          console.log(`JOIN_ROOM: Error joining room ${roomId}: ${room.error}`);
           io.to(socket.id).emit(CANT_JOIN_ROOM, room.error);
           return;
         }
@@ -152,18 +182,10 @@ export const socketSetup = (io: Server) => {
         const user2 = userSocketMap.get(room.player2);
 
         if (!user1 || !user2) {
-          console.log(`JOIN_ROOM: Missing user data - User1: ${!!user1}, User2: ${!!user2}`);
           UserIDSet.delete(user._id as string);
           io.to(socket.id).emit(CANT_JOIN_ROOM, "Player data not found");
           return;
         }
-
-        console.log(`Successfully matched users in room ${roomId}:`, {
-          player1: user1.username,
-          player2: user2.username,
-          player1Socket: room.player1,
-          player2Socket: room.player2
-        });
 
         const contestData1 = {
           roomId: roomId,
@@ -187,12 +209,8 @@ export const socketSetup = (io: Server) => {
           question: room.question,
         };
 
-        console.log(`Emitting START_CONTEST to ${user1.username} (${room.player1})`);
         io.to(room.player1).emit(START_CONTEST, contestData1);
-        
-        console.log(`Emitting START_CONTEST to ${user2.username} (${room.player2})`);
         io.to(room.player2).emit(START_CONTEST, contestData2);
-
       } catch (error) {
         console.error(`JOIN_ROOM: Error processing room ${roomId}:`, error);
         io.to(socket.id).emit(CANT_JOIN_ROOM, "Failed to join room");
@@ -200,22 +218,97 @@ export const socketSetup = (io: Server) => {
     });
 
     socket.on(LEFT_ROOM, () => {
+      console.log("LEFT_ROOM called")
       const user = userSocketMap.get(socket.id);
       if (!user) return;
-      console.log(`User ${user.username} left room`);
       UserIDSet.delete(user._id as string);
       removeSocketFromRoom(socket, io);
     });
 
-    socket.on("disconnect", () => {
+    socket.on(STARTED_MATCH, ({ opponentSocketId }) => {
+      console.log("STARTED_MATCH called")
+      console.log(opponentSocketId);
+      opponentRoomMap.set(socket.id, opponentSocketId);
+    });
+    socket.on(MATCH_OVER,
+      async ({ acceptedUserId, youId, opponentId, opponentSocketId }) => {
+      console.log("MATCH_OVER called")
+        const user = userSocketMap.get(socket.id);
+        const opponentUser = userSocketMap.get(opponentSocketId);
+        if (!user || user._id != youId || !opponentUser || !opponentUser._id)
+          return;
+
+        UserIDSet.delete(user._id as string);
+        UserIDSet.delete(opponentUser._id as string);
+        matchMaker.removePlayer(opponentSocketId);
+        matchMaker.removePlayer(socket.id);
+
+        if (acceptedUserId) {
+          if (acceptedUserId === opponentId) {
+            await Promise.all([
+              updateMatches({
+                userId: youId,
+                opponent_name: opponentUser.username,
+                result: "Loss",
+              }),
+              updateMatches({
+                userId: opponentId,
+                opponent_name: user.username,
+                result: "Win",
+              }),
+            ]);
+            io.to(opponentSocketId).emit(WIN_MATCH);
+            io.to(socket.id).emit(LOSE_MATCH);
+          } else {
+            await Promise.all([
+              updateMatches({
+                userId: youId,
+                opponent_name: opponentUser.username,
+                result: "Win",
+              }),
+              updateMatches({
+                userId: opponentId,
+                opponent_name: user.username,
+                result: "Loss",
+              }),
+            ]);
+            io.to(opponentSocketId).emit(LOSE_MATCH);
+            io.to(socket.id).emit(WIN_MATCH);
+          }
+        } else {
+          //DRAW
+          await Promise.all([
+            updateMatches({
+              userId: youId,
+              opponent_name: opponentUser.username,
+              result: "Draw",
+            }),
+            updateMatches({
+              userId: opponentId,
+              opponent_name: user.username,
+              result: "Draw",
+            }),
+          ]);
+          io.to(opponentSocketId).emit(DRAW_MATCH);
+          io.to(socket.id).emit(DRAW_MATCH);
+        }
+        opponentRoomMap.delete(socket.id);
+        opponentRoomMap.delete(opponentSocketId);
+      }
+    );
+
+    socket.on(LEFT_MATCH,async () => {
+      console.log("LEFT_MATCH called")
+      removeSocketFromRoom(socket, io);
+      await handleLeaveMatch();
+    });
+
+    socket.on("disconnect",async () => {
       console.log("A user disconnected with ID:", socket.id);
       const user = userSocketMap.get(socket.id);
+      if (!user) return;
       removeSocketFromRoom(socket, io);
-      if (user) {
-        console.log(`Cleaning up user ${user.username} on disconnect`);
-        UserIDSet.delete(user._id as string);
-        matchMaker.removePlayer(socket.id);
-      }
+      await handleLeaveMatch();
       userSocketMap.delete(socket.id);
     });
   });
@@ -261,8 +354,10 @@ export const socketSetup = (io: Server) => {
 
             io.to(player1.id).emit(START_CONTEST, contestData1);
             io.to(player2.id).emit(START_CONTEST, contestData2);
-            
-            console.log(`Match created: ${user1.username} vs ${user2.username} in room ${roomId}`);
+
+            console.log(
+              `Match created: ${user1.username} vs ${user2.username} in room ${roomId}`
+            );
           } catch (questionError) {
             console.error("Error getting question for match:", questionError);
             if (user1) {

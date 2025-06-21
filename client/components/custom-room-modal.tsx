@@ -26,6 +26,7 @@ import {
   OPPONENT_READY,
   ROOM_DISBAND,
   START_CONTEST,
+  STARTED_MATCH,
 } from "@/socket/event";
 import { useSocket } from "@/socket/socket";
 import {
@@ -41,6 +42,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import AlertMessageDialog from "./AlertMessageDialog";
 
 type StartContestPayload = {
   roomId: string;
@@ -395,6 +397,8 @@ export function CustomRoomModal({ isOpen, onClose }: CustomRoomModalProps) {
   const [opponentReady, setOpponentReady] = useState(false);
   const [countdown, setCountdown] = useState(5);
   const [showJoinModal, setShowJoinModal] = useState(false);
+  const [isalertOpen, setIsAlertOpen] = useState(false);
+  const [alertMessage, setAlertMessage] = useState("");
   const [copied, setCopied] = useState(false);
 
   const { roomId, opponentSocketId, you, opponent } = useSelector(
@@ -405,10 +409,7 @@ export function CustomRoomModal({ isOpen, onClose }: CustomRoomModalProps) {
   const dispatch = useDispatch();
   const bothPlayersReady = userReady && opponentReady && opponentJoined;
 
-  const handleClose = () => {
-    if (!bothPlayersReady) {
-      socket?.emit(LEFT_ROOM);
-    }
+  const clearAllStates = () => {
     setMode("initial");
     setSelectedRating("");
     setSelectedTypes([]);
@@ -420,8 +421,14 @@ export function CustomRoomModal({ isOpen, onClose }: CustomRoomModalProps) {
     setCountdown(5);
     setShowJoinModal(false);
     setCopied(false);
-    dispatch(deleteMatch()); 
+    dispatch(deleteMatch());
     onClose();
+  };
+  const handleClose = () => {
+    if (!bothPlayersReady) {
+      socket?.emit(LEFT_ROOM);
+    }
+    clearAllStates();
   };
 
   const handleCreateRoom = () => {
@@ -453,7 +460,7 @@ export function CustomRoomModal({ isOpen, onClose }: CustomRoomModalProps) {
 
   const handleJoinRoom = (code: string) => {
     socket?.emit(JOIN_ROOM, { roomId: code });
-    setShowJoinModal(false); 
+    setShowJoinModal(false);
   };
 
   const handleUserReady = () => {
@@ -484,14 +491,16 @@ export function CustomRoomModal({ isOpen, onClose }: CustomRoomModalProps) {
     };
 
     const onCantMatchmake = (data: { error: string }) => {
-      alert(data.error);
-      handleClose();
+      setIsAlertOpen(true);
+      setAlertMessage(data.error || "Failed to Matchmake");
+      clearAllStates();
       router.push("/home");
     };
 
     const onCantJoinRoom = (error: string) => {
-      alert(`Failed to join room: ${error}`);
-      handleClose();
+      setIsAlertOpen(true);
+      setAlertMessage(error || "Failed to Join Room");
+      clearAllStates();
     };
 
     const onStartContest = ({
@@ -542,7 +551,8 @@ export function CustomRoomModal({ isOpen, onClose }: CustomRoomModalProps) {
     };
 
     const onOpponentLeft = () => {
-      alert("Opponent has left the room.");
+      setIsAlertOpen(true);
+      setAlertMessage("Unfortunately, your opponent has left the room.");
       setOpponentJoined(false);
       setUserReady(false);
       setOpponentReady(false);
@@ -551,13 +561,14 @@ export function CustomRoomModal({ isOpen, onClose }: CustomRoomModalProps) {
     };
 
     const onRoomDisband = () => {
-      alert("The room has been disbanded.");
-      handleClose();
+      setIsAlertOpen(true);
+      setAlertMessage("The room has been disbanded by the Owner");
+      clearAllStates();
     };
 
     socket.on(CREATE_ROOM, onCreateRoom);
     socket.on(CANT_MATCHMAKE, onCantMatchmake);
-    socket.on(CANT_JOIN_ROOM, onCantJoinRoom); 
+    socket.on(CANT_JOIN_ROOM, onCantJoinRoom);
     socket.on(START_CONTEST, onStartContest);
     socket.on(OPPONENT_READY, onOpponentReady);
     socket.on(OPPONENT_LEFT_ROOM, onOpponentLeft);
@@ -579,15 +590,21 @@ export function CustomRoomModal({ isOpen, onClose }: CustomRoomModalProps) {
     if (bothPlayersReady && countdown > 0) {
       timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
     } else if (bothPlayersReady && countdown === 0) {
+      socket?.emit(STARTED_MATCH, { opponentSocketId });
       handleStartMatch();
     }
     return () => clearTimeout(timer);
-  }, [bothPlayersReady, countdown]); 
+  }, [bothPlayersReady, countdown]);
 
   // ------------------- Render Logic -------------------
   if (mode === "create" || mode === "join") {
     return (
       <>
+        <AlertMessageDialog
+          open={isalertOpen}
+          setOpen={setIsAlertOpen}
+          message={alertMessage}
+        />
         <Modal
           isOpen={isOpen}
           onClose={handleClose}
@@ -694,6 +711,11 @@ export function CustomRoomModal({ isOpen, onClose }: CustomRoomModalProps) {
   // ------------------- Initial View -------------------
   return (
     <>
+      <AlertMessageDialog
+        open={isalertOpen}
+        setOpen={setIsAlertOpen}
+        message={alertMessage}
+      />
       <Modal
         isOpen={isOpen}
         onClose={handleClose}

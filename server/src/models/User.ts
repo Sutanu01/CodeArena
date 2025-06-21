@@ -31,9 +31,9 @@ export interface User extends Document {
   total_wins: number;
   login_data: Array<boolean>;
   maxStreak: number;
-  daily_login : boolean;
+  daily_login: boolean;
   currentStreak: number;
-  match_history?: Array<Match>;
+  match_history: Array<Match>;
 }
 
 const UserSchema: Schema = new Schema({
@@ -47,33 +47,38 @@ const UserSchema: Schema = new Schema({
     maxRating: { type: Number, default: 0 },
     rank: { type: String, default: null },
     maxRank: { type: String, default: null },
-    solved_ques: [{
-      contestId: { type: Number, required: true },
-      name: { type: String, required: true },
-      questionId: { type: String, required: true},
-      index: { type: String, required: true },
-      rating: { type: Number, default: 9999 },
-      tags: { type: [String], default: [] },
-    }],
+    solved_ques: [
+      {
+        contestId: { type: Number, required: true },
+        name: { type: String, required: true },
+        questionId: { type: String, required: true },
+        index: { type: String, required: true },
+        rating: { type: Number, default: 9999 },
+        tags: { type: [String], default: [] },
+      },
+    ],
     rating_changes: [{ type: Number }],
   },
-  daily_login: { type: Boolean, default:false},
+  daily_login: { type: Boolean, default: false },
   total_matches: { type: Number, default: 0 },
   total_wins: { type: Number, default: 0 },
   login_data: { type: [Boolean], default: () => Array(35).fill(false) },
   maxStreak: { type: Number, default: 0 },
   currentStreak: { type: Number, default: 0 },
-  match_history: [
-    {
-      opponent: { type: String, required: true },
-      result: { type: String, enum: ["Win", "Loss", "Draw"], required: true },
-      date: { type: Date, default: Date.now },
-    },
-  ],
+  match_history: {
+    type: [
+      {
+        opponent: { type: String, required: true },
+        result: { type: String, enum: ["Win", "Loss", "Draw"], required: true },
+        date: { type: Date, default: Date.now },
+      },
+    ],
+    default: [],
+  },
 });
 
 const UserModel =
   (mongoose.models.User as mongoose.Model<User>) ||
   mongoose.model<User>("User", UserSchema);
 
-  export default UserModel;
+export default UserModel;

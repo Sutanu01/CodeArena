@@ -12,3 +12,10 @@ export const ROOM_DISBAND = "ROOM_DISBAND";
 export const OPPONENT_LEFT_ROOM = "OPPONENT_LEFT_ROOM";
 export const LEFT_ROOM = "LEFT_ROOM";
 export const CANT_MATCHMAKE = "CANT_MATCHMAKE";
+
+export const STARTED_MATCH = "STARTED_MATCH";
+export const LEFT_MATCH = "LEFT_MATCH";
+export const WIN_MATCH = "WIN_MATCH";
+export const LOSE_MATCH = "LOSE_MATCH";
+export const DRAW_MATCH = "DRAW_MATCH";
+export const MATCH_OVER = "MATCH_OVER";

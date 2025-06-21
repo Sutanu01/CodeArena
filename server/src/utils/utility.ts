@@ -37,7 +37,7 @@ const fetchAndStoreQuestions = async () => {
   }
 };
 const fetchAndStoreQuestionsWeekly = () => {
-  const week = (7 * 24 * 60 * 60 * 1000);
+  const week = 7 * 24 * 60 * 60 * 1000;
   setInterval(fetchAndStoreQuestions, week);
 };
 
@@ -74,20 +74,23 @@ const getUnsolvedQuestionLink = async ({
   const solvedByUser2 = await UserModel.findById(userId2);
 
   if (!solvedByUser1 || !solvedByUser2) return null;
-  
 
   const unsolvedQuestions = await QuestionModel.find({
     ...query,
     questionId: {
       $nin: [
-        ...solvedByUser1.codeforces_info.solved_ques.map((q: any) => q.questionId),
-        ...solvedByUser2.codeforces_info.solved_ques.map((q: any) => q.questionId),
+        ...solvedByUser1.codeforces_info.solved_ques.map(
+          (q: any) => q.questionId
+        ),
+        ...solvedByUser2.codeforces_info.solved_ques.map(
+          (q: any) => q.questionId
+        ),
       ],
     },
   });
 
   if (unsolvedQuestions.length === 0) return null;
-  
+
   const randomIndex = Math.floor(Math.random() * unsolvedQuestions.length);
   const question = unsolvedQuestions[randomIndex];
   return {
@@ -97,14 +100,34 @@ const getUnsolvedQuestionLink = async ({
   };
 };
 
+const updateMatches = async ({
+  userId,
+  opponent_name,
+  result,
+}: {
+  userId: string;
+  opponent_name: string;
+  result: "Win" | "Loss" | "Draw";
+}) => {
+  try {
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      console.error(`User with ${userId}not found while updating match info`);
+      return;
+    }
+    user.total_matches += 1;
+    if (result === "Win") {
+      user.total_wins += 1;
+    }
+    user.match_history.push({
+      opponent: opponent_name,
+      result: result,
+      date: new Date(),
+    });
+    await user.save();
+  } catch (error) {
+    console.error("Error updating matches : ", error);
+  }
+};
 
-
-
-
-
-
-
-
-
-export { fetchAndStoreQuestionsWeekly,getUnsolvedQuestionLink };
-
+export { fetchAndStoreQuestionsWeekly, getUnsolvedQuestionLink, updateMatches };

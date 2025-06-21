@@ -17,7 +17,6 @@ export class MatchMaker {
   addPlayer(player: Player) {
     this.removePlayer(player.id);
     this.queues[player.queueType].push(player);
-    console.log(`Player ${player.id} added to queue ${player.queueType}. Queue size: ${this.queues[player.queueType].length}`);
   }
 
   removePlayer(socketId: string) {
@@ -27,26 +26,19 @@ export class MatchMaker {
       this.queues[queueType] = this.queues[queueType].filter(p => p.id !== socketId);
       if (this.queues[queueType].length < initialLength) {
         removed = true;
-        console.log(`Player ${socketId} removed from queue ${queueType}. Queue size: ${this.queues[queueType].length}`);
       }
-    }
-    if (!removed) {
-      console.log(`Player ${socketId} was not found in any queue`);
     }
   }
 
   matchPlayers(): Match[] {
     const matches: Match[] = [];
-    console.log("Starting matchmaking process...");
 
     for (const type of ['10', '25', '40']) {
       const queue = this.queues[type];
       if (queue.length < 2) {
-        console.log(`Queue ${type} has ${queue.length} players, skipping...`);
         continue;
       }
 
-      console.log(`Processing queue ${type} with ${queue.length} players`);
       queue.sort((a, b) => a.joinTime - b.joinTime);
       const matchedIndices = new Set<number>();
 
@@ -57,8 +49,6 @@ export class MatchMaker {
         let bestMatchIndex: number | null = null;
         let bestMatchScore = Infinity;
 
-        console.log(`Looking for match for player ${player1.id} (rating: ${player1.rating})`);
-
         for (let j = i + 1; j < queue.length; j++) {
           if (matchedIndices.has(j)) continue;
 
@@ -68,28 +58,20 @@ export class MatchMaker {
 
           const ratingDiff = Math.abs(player1.rating - player2.rating);
 
-          console.log(`  Checking vs player ${player2.id} (rating: ${player2.rating}): diff=${ratingDiff}, tolerance=${ratingTolerance}, time=${Math.floor(timeInQueue/1000)}s`);
 
           if (ratingDiff <= ratingTolerance && ratingDiff < bestMatchScore) {
             bestMatchIndex = j;
             bestMatchScore = ratingDiff;
-            console.log(`    -> New best match found!`);
           }
         }
         if (bestMatchIndex !== null) {
           matches.push([player1, queue[bestMatchIndex]]);
           matchedIndices.add(i);
           matchedIndices.add(bestMatchIndex);
-          console.log(`Match created: ${player1.id} vs ${queue[bestMatchIndex].id}`);
-        } else {
-          console.log(`No match found for player ${player1.id}`);
         }
       }
       this.queues[type] = queue.filter((_, index) => !matchedIndices.has(index));
-      console.log(`Queue ${type} after matching: ${this.queues[type].length} players remaining`);
     }
-
-    console.log(`Matchmaking complete. Total matches: ${matches.length}`);
     return matches;
   }
 

@@ -1,4 +1,4 @@
-import type { Config } from "tailwindcss"
+import type { Config } from "tailwindcss";
 
 const config = {
   darkMode: ["class"],
@@ -19,6 +19,9 @@ const config = {
       },
     },
     extend: {
+      zIndex: {
+        9999: "9999",
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -69,8 +72,8 @@ const config = {
           to: { height: "0" },
         },
         pulseSlow: {
-          '0%, 100%': { opacity: "1" },
-          '50%': { opacity: "0.5" },
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.5" },
         },
       },
       animation: {
@@ -81,6 +84,6 @@ const config = {
     },
   },
   plugins: [require("tailwindcss-animate")],
-} satisfies Config
+} satisfies Config;
 
-export default config
+export default config;

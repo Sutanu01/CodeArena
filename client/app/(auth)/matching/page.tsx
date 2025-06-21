@@ -1,5 +1,6 @@
 "use client";
 
+import AlertMessageDialog from "@/components/AlertMessageDialog";
 import { ScrambledTitle } from "@/components/Scrambled-text";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,6 +12,7 @@ import {
   OPPONENT_LEFT,
   OPPONENT_READY,
   START_CONTEST,
+  STARTED_MATCH,
 } from "@/socket/event";
 import { useSocket } from "@/socket/socket";
 import { Check, Clock, Users, X } from "lucide-react";
@@ -44,6 +46,8 @@ export default function MatchingPage() {
   const [showCountdown, setShowCountdown] = useState(false);
   const [opponent, setOpponent] = useState<User | null>(null);
   const [you, setYou] = useState<User | null>(null);
+  const [isalertOpen, setIsAlertOpen] = useState(false);
+  const [alertMessage, setAlertMessage] = useState("");
   const [redirect, setRedirect] = useState(false);
   const { socket } = useSocket();
   const { opponentSocketId, roomId } = useSelector((state: any) => state.match);
@@ -79,12 +83,6 @@ export default function MatchingPage() {
       socket.on(
         START_CONTEST,
         ({ roomId, you, opponent, opponentSocketId, question }) => {
-          console.log("Received START_CONTEST:", {
-            roomId,
-            you: you?.username,
-            opponent: opponent?.username,
-            opponentSocketId,
-          });
           setWaitingRoom(true);
           setYou(you);
           setOpponent(opponent);
@@ -104,19 +102,19 @@ export default function MatchingPage() {
       );
 
       socket.on(CANT_MATCHMAKE, (data: { error: string }) => {
-        console.log("Received CANT_MATCHMAKE:", data);
         cleanUp();
         router.push("/home");
-        alert(data.error);
+        setIsAlertOpen(true);
+        setAlertMessage(data.error || "Unable to matchmake. Please try again later.");
       });
 
       socket.on(OPPONENT_READY, () => {
-        console.log("Received OPPONENT_READY");
         setOpponentReady(true);
       });
 
       socket.on(OPPONENT_LEFT, () => {
-        console.log("Received OPPONENT_LEFT");
+        setAlertMessage("Your opponent has left the match.");
+        setIsAlertOpen(true);
         cleanUp();
       });
     }
@@ -128,7 +126,7 @@ export default function MatchingPage() {
         socket.off(START_CONTEST);
         socket.off(OPPONENT_READY);
         socket.off(CANT_MATCHMAKE);
-        socket.off(OPPONENT_LEFT); 
+        socket.off(OPPONENT_LEFT);
       }
     };
   }, [socket, mode, dispatch, router]);
@@ -144,6 +142,7 @@ export default function MatchingPage() {
         setCountdown((prev) => {
           if (prev <= 1) {
             clearInterval(countdownInterval);
+            socket?.emit(STARTED_MATCH, { opponentSocketId });
             setRedirect(true);
             return 0;
           }
@@ -379,6 +378,11 @@ export default function MatchingPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 flex items-center justify-center p-4">
+      <AlertMessageDialog
+        open={isalertOpen}
+        setOpen={setIsAlertOpen}
+        message={alertMessage}
+      />
       <Card className="w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-[30rem] bg-white z-50 relative shadow-2xl">
         <CardContent className="p-4 sm:p-6 md:p-8 text-center space-y-4 sm:space-y-6">
           <div className="relative">
