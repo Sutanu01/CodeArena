@@ -56,131 +56,133 @@ import {
   YAxis,
 } from "recharts";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 export default function HomePage() {
+  const { socket } = useSocket();
+  const router = useRouter();
+  //HOOKs
+  const dispatch = useDispatch();
+  const { isLoaded, isSignedIn, user } = useUser();
+  const { UserData, isCodeforcesVerified } = useSelector(
+    (state: RootState) => state.user
+  );
+  const GetUserInfo = useGetUserInfo();
+  const updateCfHook = useUpdateCodeforcesInfo();
 
-const {socket} =useSocket();
-//HOOKs
-const dispatch = useDispatch();
-const { isLoaded, isSignedIn, user } = useUser();
-const { UserData, isCodeforcesVerified } = useSelector(
-  (state: RootState) => state.user
-);
-const GetUserInfo = useGetUserInfo();
-const updateCfHook = useUpdateCodeforcesInfo();
-
-//STATEs
-const [isCustomRoomOpen, setIsCustomRoomOpen] = useState(false);
-const [is1v1Mode, set1v1Mode] = useState(false);
-const [loading, setLoading] = useState(true);
-const [moreInfo, setMoreInfo] = useState<MoreInfoType>({
-  winrate: 0,
-  losses: 0,
-  ratingData: [],
-});
-
-
-const calculateLastChange = (data: { rating: number }[]): string => {
-  if (data.length < 1) return "N/A";
-  if (data.length === 1) return String(data[0].rating);
-
-  const last = data[data.length - 1].rating;
-  const secondLast = data[data.length - 2].rating;
-  const diff = last - secondLast;
-
-  return diff > 0 ? `+${diff}` : `${diff}`;
-};
-
-const updateMoreInfo = (data: User) => {
-  const winrate =
-    data.total_matches === 0
-      ? 0
-      : Math.round((data.total_wins / data.total_matches) * 100);
-
-  const losses = data.total_matches - data.total_wins;
-
-  const ratingChanges =
-    data.codeforces_info?.rating_changes?.map((rating, index) => ({
-      rating,
-      contestNumber: index,
-    })) || [];
-
-  setMoreInfo({ winrate, losses, ratingData: ratingChanges });
-};
-
-const updateUser = async (setcache:boolean) => {
-  const resp = await GetUserInfo.fetchUser(user?.id || "");
-  if (resp.success) {
-    dispatch(setUserData(resp.data));
-    updateMoreInfo(resp.data);
-    dispatch(setCodeforcesVerified(!!resp.data.codeforces_info?.username));
-    if(setcache) {
-      setLocalCache(USER_DATA_CACHE_KEY, resp.data, 10);
-    }
-  } else {
-    console.error("Failed to fetch user info:", resp.message);
-    toast.error("Failed to fetch user info");
-  }
-};
-
-const updateCodeforcesInfo = async () => {
-  if (!(UserData?.codeforces_info?.username)) {
-    await updateUser(false);
-    setLoading(false);
-    return;
-  }
-  const resp = await updateCfHook.update({
-    userId: UserData._id as string,
-    codeforcesId: UserData.codeforces_info.username,
+  //STATEs
+  const [isCustomRoomOpen, setIsCustomRoomOpen] = useState(false);
+  const [is1v1Mode, set1v1Mode] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [moreInfo, setMoreInfo] = useState<MoreInfoType>({
+    winrate: 0,
+    losses: 0,
+    ratingData: [],
   });
-  if (resp.success) {
-    await updateUser(true);
-     toast.success("Data Updated Successfully");
-  } else {
-    console.error("Failed to update Codeforces info:", updateCfHook.result?.message);
-    toast.error("Error fetching Codeforces info");
-  }
-};
 
-const handleRefreshCodeforces = () => {
-  if (getLocalCache<User>(USER_DATA_CACHE_KEY)) {
-    toast.info("Wait a few minutes before updating again...");
-    return;
-  }
-  updateCodeforcesInfo();
-};
+  const calculateLastChange = (data: { rating: number }[]): string => {
+    if (data.length < 1) return "N/A";
+    if (data.length === 1) return String(data[0].rating);
 
-useEffect(() => {
-  if (!isLoaded || !isSignedIn) return;
-  const cached = getLocalCache<User>(USER_DATA_CACHE_KEY);
-  if (cached) {
-    GetUserInfo.setLoading(false);
-    updateCfHook.setLoading(false);
-    dispatch(setUserData(cached));
-    updateMoreInfo(cached);
-    dispatch(setCodeforcesVerified(!!cached.codeforces_info?.username));
-  } else {
-    updateCodeforcesInfo();
-  }
-}, [user, isLoaded, isSignedIn, isCodeforcesVerified]);
+    const last = data[data.length - 1].rating;
+    const secondLast = data[data.length - 2].rating;
+    const diff = last - secondLast;
 
-useEffect(() => {
-  const isloading = GetUserInfo.loading || updateCfHook.loading;
-  setLoading(isloading);
-}, [GetUserInfo.loading, updateCfHook.loading]);
-
-useEffect(() => {
-  if (!socket || !UserData) return;
-  const setUser = () => {
-    socket.emit(SETUSER, UserData);
+    return diff > 0 ? `+${diff}` : `${diff}`;
   };
-  if (socket.connected) {
-    setUser();
-  } else {
-    socket.once("connect", setUser);
-  }
-}, [socket, UserData]);
 
+  const updateMoreInfo = (data: User) => {
+    const winrate =
+      data.total_matches === 0
+        ? 0
+        : Math.round((data.total_wins / data.total_matches) * 100);
+
+    const losses = data.total_matches - data.total_wins;
+
+    const ratingChanges =
+      data.codeforces_info?.rating_changes?.map((rating, index) => ({
+        rating,
+        contestNumber: index,
+      })) || [];
+
+    setMoreInfo({ winrate, losses, ratingData: ratingChanges });
+  };
+
+  const updateUser = async (setcache: boolean) => {
+    const resp = await GetUserInfo.fetchUser(user?.id || "");
+    if (resp.success) {
+      dispatch(setUserData(resp.data));
+      updateMoreInfo(resp.data);
+      dispatch(setCodeforcesVerified(!!resp.data.codeforces_info?.username));
+      if (setcache) {
+        setLocalCache(USER_DATA_CACHE_KEY, resp.data, 10);
+      }
+    } else {
+      console.error("Failed to fetch user info:", resp.message);
+      toast.error("Failed to fetch user info");
+    }
+  };
+
+  const updateCodeforcesInfo = async () => {
+    if (!UserData?.codeforces_info?.username) {
+      await updateUser(false);
+      setLoading(false);
+      return;
+    }
+    const resp = await updateCfHook.update({
+      userId: UserData._id as string,
+      codeforcesId: UserData.codeforces_info.username,
+    });
+    if (resp.success) {
+      await updateUser(true);
+      toast.success("Data Updated Successfully");
+    } else {
+      console.error(
+        "Failed to update Codeforces info:",
+        updateCfHook.result?.message
+      );
+      toast.error("Error fetching Codeforces info");
+    }
+  };
+
+  const handleRefreshCodeforces = () => {
+    if (getLocalCache<User>(USER_DATA_CACHE_KEY)) {
+      toast.info("Wait a few minutes before updating again...");
+      return;
+    }
+    updateCodeforcesInfo();
+  };
+
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
+    const cached = getLocalCache<User>(USER_DATA_CACHE_KEY);
+    if (cached) {
+      GetUserInfo.setLoading(false);
+      updateCfHook.setLoading(false);
+      dispatch(setUserData(cached));
+      updateMoreInfo(cached);
+      dispatch(setCodeforcesVerified(!!cached.codeforces_info?.username));
+    } else {
+      updateCodeforcesInfo();
+    }
+  }, [user, isLoaded, isSignedIn, isCodeforcesVerified]);
+
+  useEffect(() => {
+    const isloading = GetUserInfo.loading || updateCfHook.loading;
+    setLoading(isloading);
+  }, [GetUserInfo.loading, updateCfHook.loading]);
+
+  useEffect(() => {
+    if (!socket || !UserData) return;
+    const setUser = () => {
+      socket.emit(SETUSER, UserData);
+    };
+    if (socket.connected) {
+      setUser();
+    } else {
+      socket.once("connect", setUser);
+    }
+  }, [socket, UserData]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -443,6 +445,7 @@ useEffect(() => {
               <Button
                 variant="outline"
                 className="w-full group-hover:bg-green-50 dark:group-hover:bg-green-900/20 transition-colors"
+                onClick={() => router.push("/DailyPuzzle")}
               >
                 Solve Puzzle
               </Button>
@@ -585,20 +588,12 @@ useEffect(() => {
                 </div>
                 <div>
                   <CardTitle className="text-lg">Activity</CardTitle>
-                  <CardDescription>Your coding streak</CardDescription>
+                  <CardDescription>Last 35 Days</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-7 gap-1 text-center text-xs">
-                <div className="font-medium text-muted-foreground">S</div>
-                <div className="font-medium text-muted-foreground">M</div>
-                <div className="font-medium text-muted-foreground">T</div>
-                <div className="font-medium text-muted-foreground">W</div>
-                <div className="font-medium text-muted-foreground">T</div>
-                <div className="font-medium text-muted-foreground">F</div>
-                <div className="font-medium text-muted-foreground">S</div>
-
                 {UserData?.login_data.map((activity, i) => (
                   <div
                     key={i}
@@ -617,61 +612,58 @@ useEffect(() => {
               <CardDescription>Your latest battles</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {UserData?.match_history &&
-                UserData.match_history.length > 0 ? (
-                  UserData.match_history.map(
-                    (
-                      match: {
-                        result: string;
-                        opponent: string;
-                        date: Date;
-                      },
-                      i: number
-                    ) => (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                      >
-                        <div className="flex items-center space-x-3">
-                          <div
-                            className={`w-2 h-2 rounded-full ${
-                              match.result === "Win"
-                                ? "bg-green-500"
-                                : match.result === "Draw"
-                                ? "bg-yellow-300"
-                                : "bg-red-500"
-                            }`}
-                          />
-                          <div>
-                            <div className="font-medium">{match.opponent}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {new Date(match.date).toLocaleDateString()} -{" "}
+              {UserData?.match_history && UserData.match_history.length > 0 ? (
+                <div className="h-80 overflow-y-scroll">
+                  <div className="space-y-3 pr-2">
+                    {UserData.match_history
+                      .slice()
+                      .reverse()
+                      .map((match, i) => (
+                        <div
+                          key={i}
+                          className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div
+                              className={`w-3 h-3 rounded-full ${
+                                match.result === "Win"
+                                  ? "bg-green-500"
+                                  : match.result === "Draw"
+                                  ? "bg-yellow-300"
+                                  : "bg-red-500"
+                              }`}
+                            />
+                            <div>
+                              <div className="font-medium">
+                                {match.opponent}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                {new Date(match.date).toLocaleDateString()}
+                              </div>
                             </div>
                           </div>
+                          <div
+                            className={`px-3 py-1 rounded-full text-xs font-semibold text-white ${
+                              match.result === "Win"
+                                ? "bg-green-600"
+                                : match.result === "Draw"
+                                ? "bg-yellow-500 text-black"
+                                : "bg-red-600"
+                            }`}
+                          >
+                            {match.result}
+                          </div>
                         </div>
-                        <div
-                          className={`text-sm font-medium ${
-                            match.result === "Win"
-                              ? "bg-green-500"
-                              : match.result === "Draw"
-                              ? "bg-yellow-300"
-                              : "bg-red-500"
-                          }`}
-                        >
-                          {match.result}
-                        </div>
-                      </div>
-                    )
-                  )
-                ) : (
-                  <div className="flex justify-center items-center py-12">
-                    <span className="text-2xl font-semibold text-muted-foreground text-center">
-                      No recent matches
-                    </span>
+                      ))}
                   </div>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className="flex justify-center items-center py-12">
+                  <span className="text-2xl font-semibold text-muted-foreground text-center">
+                    No recent matches
+                  </span>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
