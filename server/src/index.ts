@@ -9,6 +9,7 @@ import { ErrorHandler } from "./middlewares/error.js";
 import CodeForcesRoute from "./routes/CodeForcesRoute.js";
 import Features from "./routes/Features.js";
 import UserRoute from "./routes/UserRoute.js";
+import Practice from "./routes/Practice.js"
 import { socketSetup } from "./socket.js";
 import initialiseCronJobs from "./utils/cron-jobs.js";
 import { connectToDatabase } from "./utils/db.js";
@@ -46,6 +47,7 @@ app.get('/', (req, res) => {
 app.use('/api/user', UserRoute)
 app.use('/api/cf', CodeForcesRoute)
 app.use('/api/features', Features)
+app.use('/api/practice', Practice)
 
 
 const PORT = process.env.PORT || 5000;
