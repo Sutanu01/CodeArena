@@ -9,7 +9,7 @@ export interface Question extends Document {
   tags: string[];
 }
 
-const QuestionSchema: Schema = new Schema({
+const QuestionSchema: Schema<Question> = new Schema({
   contestId: { type: Number, required: true },
   name: { type: String, required: true },
   questionId: { type: String, required: true, unique: true },

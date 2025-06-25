@@ -67,12 +67,10 @@ export const socketSetup = (io: Server) => {
     };
 
     socket.on(SETUSER, (UserData: User) => {
-      console.log("SETUSER called")
       userSocketMap.set(socket.id, UserData);
     });
 
     socket.on(START_MATCHMAKING, (info: any) => {
-      console.log("START_MATCHMAKING called")
       const user = userSocketMap.get(socket.id);
       if (!user) return;
 
@@ -96,7 +94,6 @@ export const socketSetup = (io: Server) => {
     });
 
     socket.on(END_MATCHMAKING, (info: any) => {
-      console.log("END_MATCHMAKING called")
       const user = userSocketMap.get(socket.id);
       if (!user) return;
       UserIDSet.delete(user._id as string);
@@ -104,12 +101,10 @@ export const socketSetup = (io: Server) => {
     });
 
     socket.on(OPPONENT_READY, ({ to }) => {
-      console.log("OPPONENT_READY called")
       io.to(to).emit(OPPONENT_READY);
     });
 
     socket.on(OPPONENT_LEFT, ({ to, mode }) => {
-      console.log("OPPONENT_LEFT called")
       io.to(to).emit(OPPONENT_LEFT);
       const user = userSocketMap.get(socket.id);
       if (!user) return;
@@ -127,7 +122,6 @@ export const socketSetup = (io: Server) => {
     });
 
     socket.on(CREATE_ROOM, ({ lowerRating, upperRating, tags }) => {
-      console.log("CREATE_ROOM called")
       const user = userSocketMap.get(socket.id);
       if (!user) {
         return;
@@ -153,7 +147,6 @@ export const socketSetup = (io: Server) => {
     });
 
     socket.on(JOIN_ROOM, async ({ roomId }) => {
-      console.log("JOIN_ROOM called")
       const user = userSocketMap.get(socket.id);
       if (!user) {
         io.to(socket.id).emit(CANT_JOIN_ROOM, "User not found");
@@ -218,7 +211,6 @@ export const socketSetup = (io: Server) => {
     });
 
     socket.on(LEFT_ROOM, () => {
-      console.log("LEFT_ROOM called")
       const user = userSocketMap.get(socket.id);
       if (!user) return;
       UserIDSet.delete(user._id as string);
@@ -226,13 +218,10 @@ export const socketSetup = (io: Server) => {
     });
 
     socket.on(STARTED_MATCH, ({ opponentSocketId }) => {
-      console.log("STARTED_MATCH called")
-      console.log(opponentSocketId);
       opponentRoomMap.set(socket.id, opponentSocketId);
     });
     socket.on(MATCH_OVER,
       async ({ acceptedUserId, youId, opponentId, opponentSocketId }) => {
-      console.log("MATCH_OVER called")
         const user = userSocketMap.get(socket.id);
         const opponentUser = userSocketMap.get(opponentSocketId);
         if (!user || user._id != youId || !opponentUser || !opponentUser._id)
@@ -298,7 +287,6 @@ export const socketSetup = (io: Server) => {
     );
 
     socket.on(LEFT_MATCH,async () => {
-      console.log("LEFT_MATCH called")
       removeSocketFromRoom(socket, io);
       await handleLeaveMatch();
     });
@@ -320,16 +308,30 @@ export const socketSetup = (io: Server) => {
 
     try {
       const matches = matchMaker.matchPlayers();
-      for (const [player1, player2] of matches) {
+      for (const { queueType, players: [player1, player2] } of matches) {
         const user1 = userSocketMap.get(player1.id);
         const user2 = userSocketMap.get(player2.id);
-
+        let lowerRating = 0;
+        let upperRating = 0;
+        if(queueType === "10") {
+          lowerRating = 0;
+          upperRating = 1300;
+        } else if(queueType === "25") {
+          lowerRating = 1400;
+          upperRating = 1700;
+        }
+        else if(queueType === "40") {
+          lowerRating = 1800;
+          upperRating = 3500;
+        }
         if (user1 && user2) {
           try {
             console.log(`Auto-matching ${user1.username} vs ${user2.username}`);
             const question = await getUnsolvedQuestionLink({
               userId1: user1._id as string,
               userId2: user2._id as string,
+              lowerRating,
+              upperRating,
             });
             const roomId = Math.random()
               .toString(36)

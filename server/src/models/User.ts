@@ -36,7 +36,7 @@ export interface User extends Document {
   match_history: Array<Match>;
 }
 
-const UserSchema: Schema = new Schema({
+const UserSchema: Schema<User> = new Schema({
   username: { type: String, required: true, unique: true },
   clerkId: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true },

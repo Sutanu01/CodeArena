@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-
+import { useState, useCallback } from "react";
+const server = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 export interface TestResult {
   testCaseIndex: number;
   pass: boolean;
@@ -28,15 +28,16 @@ export interface ApiResponse {
   data: SubmissionResponse | null;
 }
 
-export type LanguageId = 
-  | "C++" 
-  | "Java" 
-  | "Python" 
-  | "JavaScript" 
-  | "Rust" 
+export type LanguageId =
+  | "C++"
+  | "Java"
+  | "Python"
+  | "JavaScript"
+  | "Rust"
   | "TypeScript";
 
 export interface SubmissionRequest {
+  userId: string | null;
   questionId: string;
   language: LanguageId;
   source_code: string;
@@ -50,8 +51,6 @@ interface UseSubmitCodeReturn {
   reset: () => void;
 }
 
-const API_BASE_URL = 'http://localhost:5000';
-
 export const useSubmitCode = (): UseSubmitCodeReturn => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [result, setResult] = useState<SubmissionResponse | null>(null);
@@ -61,12 +60,16 @@ export const useSubmitCode = (): UseSubmitCodeReturn => {
     setIsSubmitting(true);
     setError(null);
     setResult(null);
-
+    if (data.userId === null) {
+      setError("User ID is required");
+      setIsSubmitting(false);
+      return;
+    }
     try {
-      const response = await fetch(`${API_BASE_URL}/api/practice/sumbit`, {
-        method: 'POST',
+      const response = await fetch(`${server}/api/practice/sumbit`, {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(data),
       });
@@ -78,18 +81,19 @@ export const useSubmitCode = (): UseSubmitCodeReturn => {
       const apiResponse: ApiResponse = await response.json();
 
       if (!apiResponse.success) {
-        throw new Error(apiResponse.message || 'Submission failed');
+        throw new Error(apiResponse.message || "Submission failed");
       }
 
       if (!apiResponse.data) {
-        throw new Error('No data received from server');
+        throw new Error("No data received from server");
       }
 
       setResult(apiResponse.data);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+      const errorMessage =
+        err instanceof Error ? err.message : "An unknown error occurred";
       setError(errorMessage);
-      console.error('Submit code error:', err);
+      console.error("Submit code error:", err);
     } finally {
       setIsSubmitting(false);
     }
@@ -108,4 +112,53 @@ export const useSubmitCode = (): UseSubmitCodeReturn => {
     error,
     reset,
   };
+};
+
+type GetSubmissionsParams = {
+  userId: string;
+  questionId: string;
+};
+
+export const useGetSubmissions = () => {
+  const [submissions, setSubmissions] = useState([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchSubmissions = useCallback(
+    async ({ userId, questionId }: GetSubmissionsParams) => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetch(
+          `${server}/api/practice/get-submissions?userId=${userId}&questionId=${questionId}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!response.ok) {
+          return {error: `HTTP error! status: ${response.status}`};
+        }
+
+        const data = await response.json();
+        setSubmissions(data);
+        return { data };
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "An unknown error occurred";
+        setError(errorMessage);
+        console.error("Fetch submissions error:", err);
+        return { error: errorMessage };
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  return { submissions, loading, error, fetchSubmissions };
 };

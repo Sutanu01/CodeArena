@@ -5,10 +5,13 @@ export type Player = {
   queueType: '10' | '25' | '40';
 };
 
-export type Match = [Player, Player];
+export interface Match {
+  queueType: Player['queueType'];
+  players: [Player, Player];
+}
 
 export class MatchMaker {
-  queues: { [key: string]: Player[] } = {
+  queues: { [key in Player['queueType']]: Player[] } = {
     '10': [],
     '25': [],
     '40': [],
@@ -20,24 +23,19 @@ export class MatchMaker {
   }
 
   removePlayer(socketId: string) {
-    let removed = false;
-    for (const queueType of Object.keys(this.queues)) {
-      const initialLength = this.queues[queueType].length;
-      this.queues[queueType] = this.queues[queueType].filter(p => p.id !== socketId);
-      if (this.queues[queueType].length < initialLength) {
-        removed = true;
-      }
+    for (const queueType of Object.keys(this.queues) as Player['queueType'][]) {
+      this.queues[queueType] = this.queues[queueType].filter(
+        p => p.id !== socketId
+      );
     }
   }
 
   matchPlayers(): Match[] {
     const matches: Match[] = [];
 
-    for (const type of ['10', '25', '40']) {
+    for (const type of ['10', '25', '40'] as Player['queueType'][]) {
       const queue = this.queues[type];
-      if (queue.length < 2) {
-        continue;
-      }
+      if (queue.length < 2) continue;
 
       queue.sort((a, b) => a.joinTime - b.joinTime);
       const matchedIndices = new Set<number>();
@@ -55,23 +53,27 @@ export class MatchMaker {
           const player2 = queue[j];
           const timeInQueue = Date.now() - Math.min(player1.joinTime, player2.joinTime);
           const ratingTolerance = this.getRatingTolerance(timeInQueue);
-
           const ratingDiff = Math.abs(player1.rating - player2.rating);
-
 
           if (ratingDiff <= ratingTolerance && ratingDiff < bestMatchScore) {
             bestMatchIndex = j;
             bestMatchScore = ratingDiff;
           }
         }
+
         if (bestMatchIndex !== null) {
-          matches.push([player1, queue[bestMatchIndex]]);
+          matches.push({
+            queueType: type,
+            players: [player1, queue[bestMatchIndex]],
+          });
           matchedIndices.add(i);
           matchedIndices.add(bestMatchIndex);
         }
       }
+
       this.queues[type] = queue.filter((_, index) => !matchedIndices.has(index));
     }
+
     return matches;
   }
 
@@ -82,17 +84,25 @@ export class MatchMaker {
   }
 
   getQueueStatus() {
-    const status: any = {};
-    for (const [queueType, players] of Object.entries(this.queues)) {
+    const status: Record<
+      Player['queueType'],
+      { count: number; players: { id: string; rating: number; waitTime: string }[] }
+    > = { '10': [], '25': [], '40': [] } as any;
+
+    for (const [queueType, players] of Object.entries(this.queues) as [
+      Player['queueType'],
+      Player[]
+    ][]) {
       status[queueType] = {
         count: players.length,
         players: players.map(p => ({
           id: p.id.substring(0, 8) + '...',
           rating: p.rating,
-          waitTime: Math.floor((Date.now() - p.joinTime) / 1000) + 's'
-        }))
+          waitTime: Math.floor((Date.now() - p.joinTime) / 1000) + 's',
+        })),
       };
     }
+
     return status;
   }
 }
