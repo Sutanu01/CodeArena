@@ -5,6 +5,8 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ClerkProvider } from "@clerk/nextjs";
 import { SocketProvider } from "@/socket/socket";
+import { Analytics } from "@vercel/analytics/next"
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import StoreProvider from "@/redux/StoreProvider";
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,6 +21,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
+    
     <StoreProvider>
       <SocketProvider>
         <ClerkProvider>
@@ -32,6 +35,8 @@ export default function RootLayout({
                 storageKey="Code Arena-theme"
               >
                 {children}
+                <Analytics />
+                <SpeedInsights />
               </ThemeProvider>
             </body>
           </html>
