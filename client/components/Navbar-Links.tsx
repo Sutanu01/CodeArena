@@ -73,7 +73,7 @@ export default function NavbarLinks() {
           Leaderboard
         </button>
         <button
-          onClick={() => router.push("/practice")}
+          onClick={() => router.push("/puzzle")}
           className="text-sm font-medium hover:text-primary transition-colors"
         >
           Practice

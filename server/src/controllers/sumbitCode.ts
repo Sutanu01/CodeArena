@@ -4,6 +4,7 @@ import { sendResponse, TryCatch } from "../utils/features.js";
 import type { TestCase, TestCaseList } from "../types/TC-type.js";
 import { testcases } from "../Data/TestCases.js";
 import SubmissionsModel, { Submission } from "../models/Submissions.js";
+import UserModel from "../models/User.js";
 
 dotenv.config();
 
@@ -211,11 +212,15 @@ const SubmitCode = TryCatch(
         },
         submittedAt: new Date(),
       };
+      if(allPassed){
+        await UserModel.findByIdAndUpdate(userId,{$set:{daily_login:true}});
+      }
       await SubmissionsModel.findOneAndUpdate(
         { questionId },
         { $push: { submissions: newSubmission } },
         { upsert: true, new: true }
       );
+
       sendResponse(200, true, "Submission completed", res, {
         questionId,
         summary: {

@@ -445,7 +445,7 @@ export default function HomePage() {
               <Button
                 variant="outline"
                 className="w-full group-hover:bg-green-50 dark:group-hover:bg-green-900/20 transition-colors"
-                onClick={() => router.push("/DailyPuzzle")}
+                onClick={() => router.push("/puzzle")}
               >
                 Solve Puzzle
               </Button>

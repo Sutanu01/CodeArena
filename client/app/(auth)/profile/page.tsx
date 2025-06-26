@@ -1,9 +1,9 @@
-import { Navbar } from "@/components/navbar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Trophy, Target, Users, Clock, Award, TrendingUp } from "lucide-react"
+import Navbar from "@/components/navbar"
 
 export default function ProfilePage() {
   return (

@@ -17,8 +17,8 @@ import {
   Loader2,
   CheckCircle,
   XCircle,
-  AlertCircle,
   Clock,
+  X,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import Timer from "@/components/PuzzleTimer";
@@ -28,10 +28,10 @@ import {
   useGetSubmissions,
   useSubmitCode,
   type LanguageId,
-  type TestResult,
+  type SubmissionResponse,
 } from "@/hooks/api/sumbit-hooks";
 import { useSelector } from "react-redux";
-import { RootState } from "@/redux/store";
+import type { RootState } from "@/redux/store";
 import { toast } from "sonner";
 
 interface Language {
@@ -44,6 +44,7 @@ type Verdict = {
   message: string;
 };
 interface Submission {
+  _id: Date;
   userId: string;
   verdict: Verdict;
   submittedAt: Date;
@@ -56,6 +57,168 @@ interface Submissions {
 
 type CodeMap = Record<string, string>;
 
+// Submission Result Modal Component
+interface SubmissionResultModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  isSubmitting: boolean;
+  result: SubmissionResponse | null;
+  error: string | null;
+}
+
+const SubmissionResultModal: React.FC<SubmissionResultModalProps> = ({
+  isOpen,
+  onClose,
+  isSubmitting,
+  result,
+  error,
+}) => {
+  if (!isOpen) return null;
+
+  const getStatusColor = (allPassed: boolean) => {
+    return allPassed ? "text-green-500" : "text-red-500";
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold">Submission Result</h3>
+          <button
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="p-6 overflow-y-auto max-h-[60vh]">
+          {isSubmitting && (
+            <div className="flex items-center space-x-3">
+              <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+              <div>
+                <p className="font-medium text-lg">Running your code...</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Testing against all test cases. This may take a few moments.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="flex items-start space-x-3">
+              <XCircle className="w-6 h-6 text-red-500 mt-0.5" />
+              <div>
+                <p className="font-medium text-lg text-red-600 dark:text-red-400">
+                  Submission Error
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  {error}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {result && (
+            <div className="space-y-6">
+              <div className="flex items-center space-x-3">
+                {result.summary.allPassed ? (
+                  <CheckCircle className="w-8 h-8 text-green-500" />
+                ) : (
+                  <XCircle className="w-8 h-8 text-red-500" />
+                )}
+                <div>
+                  <p
+                    className={`font-medium text-xl ${getStatusColor(
+                      result.summary.allPassed
+                    )}`}
+                  >
+                    {result.summary.allPassed
+                      ? "All Tests Passed!"
+                      : "Some Tests Failed"}
+                  </p>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {result.summary.passed}/{result.summary.total} test cases
+                    passed
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="font-medium text-lg">Test Results:</h4>
+                <div className="space-y-3 max-h-80 overflow-y-auto">
+                  {result.results.map((testResult, index) => (
+                    <div
+                      key={index}
+                      className={`p-4 rounded-lg border-l-4 ${
+                        testResult.pass
+                          ? "bg-green-50 dark:bg-green-900/20 border-green-500"
+                          : "bg-red-50 dark:bg-red-900/20 border-red-500"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium">
+                          Test Case {testResult.testCaseIndex}
+                        </span>
+                        <span
+                          className={`text-sm font-medium ${
+                            testResult.pass
+                              ? "text-green-600 dark:text-green-400"
+                              : "text-red-600 dark:text-red-400"
+                          }`}
+                        >
+                          {testResult.pass ? "PASS" : "FAIL"}
+                        </span>
+                      </div>
+                      {!testResult.pass && (
+                        <div className="text-sm space-y-2">
+                          <div>
+                            <span className="font-medium">Expected:</span>
+                            <pre className="mt-1 p-2 bg-gray-100 dark:bg-gray-600 rounded text-xs overflow-x-auto">
+                              {testResult.expected || "N/A"}
+                            </pre>
+                          </div>
+                          <div>
+                            <span className="font-medium">Got:</span>
+                            <pre className="mt-1 p-2 bg-gray-100 dark:bg-gray-600 rounded text-xs overflow-x-auto">
+                              {testResult.got || "N/A"}
+                            </pre>
+                          </div>
+                          {testResult.error && (
+                            <div>
+                              <span className="font-medium">Error:</span>
+                              <pre className="mt-1 p-2 bg-red-100 dark:bg-red-900/30 rounded text-xs overflow-x-auto text-red-600 dark:text-red-400">
+                                {testResult.error}
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Modal Footer */}
+        {!isSubmitting && (
+          <div className="flex justify-end p-6 border-t border-gray-200 dark:border-gray-700">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const DailyPuzzlePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"description" | "submissions">(
     "description"
@@ -66,13 +229,16 @@ const DailyPuzzlePage: React.FC = () => {
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [showHints, setShowHints] = useState(false);
   const [code, setCode] = useState<CodeMap>({});
-  const [Submissions, setSubmissions] = useState<Submissions>({
+  const [submissions, setSubmissions] = useState<Submissions>({
     questionId: "",
     submissions: [],
   });
+  const [showResultModal, setShowResultModal] = useState(false);
+
   const { UserData } = useSelector((state: RootState) => state.user);
   const { submitCode, isSubmitting, result, error, reset } = useSubmitCode();
   const { fetchSubmissions, loading } = useGetSubmissions();
+
   const languages: Language[] = [
     { id: "C++", name: "C++", icon: "🔥" },
     { id: "Java", name: "Java", icon: "☕" },
@@ -89,21 +255,50 @@ const DailyPuzzlePage: React.FC = () => {
     return now.getDate();
   };
 
+  // Fetch submissions when question changes
   useEffect(() => {
     const handleFetch = async () => {
+      if (!currentQuestion || !UserData?._id) return;
+
       const resp = await fetchSubmissions({
-        userId: UserData?._id as string,
-        questionId: currentQuestion?.id.toString() as string,
+        userId: UserData._id,
+        questionId: currentQuestion.id.toString(),
       });
       if (resp.error) {
         toast.error("Failed to fetch submissions");
         return;
       }
-      const submissions: Submissions = resp.data;
-      setSubmissions(submissions);
+
+      if (resp.data?.data) {
+        setSubmissions({
+          questionId: currentQuestion.id.toString(),
+          submissions: resp.data.data.submissions || [],
+        });
+        console.log("Submissions set:", resp.data.data.submissions);
+      }
     };
     handleFetch();
-  }, [currentQuestion]);
+  }, [currentQuestion, UserData?._id, fetchSubmissions]);
+
+  // Handle submission completion
+  useEffect(() => {
+    if (result || error) {
+      // Refresh submissions after a successful submission
+      if (result && currentQuestion && UserData?._id) {
+        fetchSubmissions({
+          userId: UserData._id,
+          questionId: currentQuestion.id.toString(),
+        }).then((resp) => {
+          if (resp.data?.data) {
+            setSubmissions({
+              questionId: currentQuestion.id.toString(),
+              submissions: resp.data.data.submissions || [],
+            });
+          }
+        });
+      }
+    }
+  }, [result, error, currentQuestion, UserData?._id, fetchSubmissions]);
 
   useEffect(() => {
     const dayOfMonth = getDayOfMonth();
@@ -169,12 +364,19 @@ const DailyPuzzlePage: React.FC = () => {
       return;
     }
     reset();
+    setShowResultModal(true);
+
     await submitCode({
       userId: UserData?._id || null,
       questionId: currentQuestion.id.toString(),
       language: selectedLanguage,
       source_code: code[selectedLanguage],
     });
+  };
+
+  const handleCloseResultModal = () => {
+    setShowResultModal(false);
+    reset();
   };
 
   const resetCode = () => {
@@ -226,16 +428,12 @@ const DailyPuzzlePage: React.FC = () => {
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    if (status === "Accepted")
-      return <CheckCircle className="w-4 h-4 text-green-500" />;
-    if (status.includes("Error"))
-      return <XCircle className="w-4 h-4 text-red-500" />;
-    return <AlertCircle className="w-4 h-4 text-yellow-500" />;
-  };
-
-  const getStatusColor = (allPassed: boolean) => {
-    return allPassed ? "text-green-500" : "text-red-500";
+  const getStatusIcon = (success: boolean) => {
+    return success ? (
+      <CheckCircle className="w-4 h-4 text-green-500" />
+    ) : (
+      <XCircle className="w-4 h-4 text-red-500" />
+    );
   };
 
   if (!currentQuestion) {
@@ -451,7 +649,7 @@ const DailyPuzzlePage: React.FC = () => {
                           : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                       }`}
                     >
-                      Submissions ({Submissions?.submissions?.length || 0})
+                      Submissions ({submissions?.submissions?.length || 0})
                     </button>
                   </nav>
                 </div>
@@ -507,171 +705,68 @@ const DailyPuzzlePage: React.FC = () => {
                   {activeTab === "submissions" && (
                     <div className="space-y-4">
                       <h3 className="text-lg font-semibold">
-                        Your Submissions
+                        Your Submission History
                       </h3>
 
-                      {/* Current Submission Status */}
-                      {(isSubmitting || result || error) && (
-                        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-4">
-                          {isSubmitting && (
-                            <div className="flex items-center space-x-3">
-                              <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
-                              <div>
-                                <p className="font-medium">
-                                  Running your code...
-                                </p>
-                                <p className="text-sm text-gray-600 dark:text-gray-400">
-                                  Testing against all test cases
-                                </p>
-                              </div>
-                            </div>
-                          )}
-
-                          {error && (
-                            <div className="flex items-start space-x-3">
-                              <XCircle className="w-5 h-5 text-red-500 mt-0.5" />
-                              <div>
-                                <p className="font-medium text-red-600 dark:text-red-400">
-                                  Submission Error
-                                </p>
-                                <p className="text-sm text-gray-600 dark:text-gray-400">
-                                  {error}
-                                </p>
-                              </div>
-                            </div>
-                          )}
-
-                          {result && (
-                            <div className="space-y-4">
-                              <div className="flex items-center space-x-3">
-                                {result.summary.allPassed ? (
-                                  <CheckCircle className="w-6 h-6 text-green-500" />
-                                ) : (
-                                  <XCircle className="w-6 h-6 text-red-500" />
-                                )}
-                                <div>
-                                  <p
-                                    className={`font-medium ${getStatusColor(
-                                      result.summary.allPassed
-                                    )}`}
-                                  >
-                                    {result.summary.allPassed
-                                      ? "All Tests Passed!"
-                                      : "Some Tests Failed"}
-                                  </p>
-                                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                                    {result.summary.passed}/
-                                    {result.summary.total} test cases passed
-                                  </p>
-                                </div>
-                              </div>
-
-                              <div className="space-y-2">
-                                <h4 className="font-medium">Test Results:</h4>
-                                <div className="space-y-2 max-h-60 overflow-y-auto">
-                                  {result.results.map((testResult, index) => (
-                                    <div
-                                      key={index}
-                                      className={`p-3 rounded border-l-4 ${
-                                        testResult.pass
-                                          ? "bg-green-50 dark:bg-green-900/20 border-green-500"
-                                          : "bg-red-50 dark:bg-red-900/20 border-red-500"
-                                      }`}
-                                    >
-                                      <div className="flex items-center justify-between mb-2">
-                                        <span className="font-medium">
-                                          Test Case {testResult.testCaseIndex}
-                                        </span>
-                                        <span
-                                          className={`text-sm ${
-                                            testResult.pass
-                                              ? "text-green-600"
-                                              : "text-red-600"
-                                          }`}
-                                        >
-                                          {testResult.pass ? "PASS" : "FAIL"}
-                                        </span>
-                                      </div>
-                                      {!testResult.pass && (
-                                        <div className="text-sm space-y-1">
-                                          <div>
-                                            <span className="font-medium">
-                                              Expected:
-                                            </span>
-                                            <code className="ml-2 bg-gray-100 dark:bg-gray-600 px-1 rounded">
-                                              {testResult.expected || "N/A"}
-                                            </code>
-                                          </div>
-                                          <div>
-                                            <span className="font-medium">
-                                              Got:
-                                            </span>
-                                            <code className="ml-2 bg-gray-100 dark:bg-gray-600 px-1 rounded">
-                                              {testResult.got || "N/A"}
-                                            </code>
-                                          </div>
-                                          {testResult.error && (
-                                            <div>
-                                              <span className="font-medium">
-                                                Error:
-                                              </span>
-                                              <code className="ml-2 bg-gray-100 dark:bg-gray-600 px-1 rounded text-red-600">
-                                                {testResult.error}
-                                              </code>
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
-                          )}
+                      {loading && (
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+                          <span className="ml-2 text-gray-600 dark:text-gray-400">
+                            Loading submissions...
+                          </span>
                         </div>
                       )}
 
-                      {Submissions?.submissions?.length === 0 &&
-                      !isSubmitting &&
-                      !result &&
-                      !error ? (
+                      {!loading && submissions?.submissions?.length === 0 ? (
                         <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                           <Send className="w-12 h-12 mx-auto mb-4 opacity-50" />
                           <p>
-                            No submissions yet. Submit your solution to see
-                            results here.
+                            No submissions yet. Submit your solution to see your
+                            submission history here.
                           </p>
                         </div>
                       ) : (
                         <div className="space-y-3">
-                          {Submissions?.submissions?.map((submission) => (
-                            <div
-                              key={submission.submittedAt.toString()}
-                              className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-start space-x-3"
-                            >
-                              <div className="flex-shrink-0">
-                                {getStatusIcon(submission.verdict.message)}
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex items-center justify-between mb-1">
-                                  <span className="font-medium">
-                                    {submission.userId === UserData?._id
-                                      ? "You"
-                                      : submission.userId}
-                                  </span>
-                                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                                    <Clock className="inline w-4 h-4 mr-1" />
-                                    {new Date(
-                                      submission.submittedAt
-                                    ).toLocaleString()}
-                                  </span>
+                          {submissions?.submissions
+                            ?.sort(
+                              (a, b) =>
+                                new Date(b.submittedAt).getTime() -
+                                new Date(a.submittedAt).getTime()
+                            )
+                            .map((submission, index) => (
+                              <div
+                                key={`${submission._id || submission.submittedAt}-${index}`}
+                                className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-start space-x-3"
+                              >
+                                <div className="flex-shrink-0">
+                                  {getStatusIcon(submission.verdict.success)}
                                 </div>
-                                <p className="text-sm text-gray-600 dark:text-gray-300">
-                                  {submission.verdict.message}
-                                </p>
+                                <div className="flex-1">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span
+                                      className={`font-medium ${
+                                        submission.verdict.success
+                                          ? "text-green-600 dark:text-green-400"
+                                          : "text-red-600 dark:text-red-400"
+                                      }`}
+                                    >
+                                      {submission.verdict.success
+                                        ? "Accepted"
+                                        : "Failed"}
+                                    </span>
+                                    <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                                      <Clock className="inline w-3 h-3 mr-1" />
+                                      {new Date(
+                                        submission.submittedAt
+                                      ).toLocaleString()}
+                                    </span>
+                                  </div>
+                                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                                    {submission.verdict.message}
+                                  </p>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            ))}
                         </div>
                       )}
                     </div>
@@ -760,7 +855,7 @@ const DailyPuzzlePage: React.FC = () => {
                   <span>
                     Ln {(code[selectedLanguage] || "").split("\n").length}
                   </span>
-                  <span>{isSubmitting ? "Submitting..." : "Ready"}</span>
+                  <span>Ready</span>
                 </div>
               </div>
 
@@ -785,6 +880,15 @@ const DailyPuzzlePage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Submission Result Modal */}
+      <SubmissionResultModal
+        isOpen={showResultModal}
+        onClose={handleCloseResultModal}
+        isSubmitting={isSubmitting}
+        result={result}
+        error={error}
+      />
     </div>
   );
 };
