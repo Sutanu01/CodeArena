@@ -252,8 +252,10 @@ const getSubmissions = TryCatch(
     }
     const submissions = await SubmissionsModel.findOne({
       questionId,
-      "submissions.userId": userId,
     });
+    submissions?.submissions.filter(
+      (submission) => submission.userId === userId
+    );
     sendResponse(
       200,
       true,
