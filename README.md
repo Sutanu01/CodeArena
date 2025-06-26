@@ -56,10 +56,18 @@ The ultimate 1v1 battleground for competitive programmers. Challenge peers, solv
 
 ---
 
-## 📸 Screenshots
-- **Dashboard View**  
-- **Room Creation / Join**  
-- **Daily Puzzle Interface**
+### 📸 Screenshots
+### Dashboard
+![Dashboard view](./assets/home.png)
+
+### Create/Join Room
+![Room creation view](./assets/custom.png)
+
+### Match Room
+![Room creation view](./assets/1v1.png)
+
+### Daily Puzzle
+![Daily puzzle interface](./assets/puzzle.png)
 
 ---
 
