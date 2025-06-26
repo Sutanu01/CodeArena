@@ -1,5 +1,6 @@
 import cron from "node-cron";
 import UserModel from "../models/User.js";
+import { fetchAndStoreQuestions } from "./utility.js";
 
 const SetDailyLoginStatus = () =>{
     cron.schedule('0 0 * * *',async ()=>{
@@ -21,8 +22,15 @@ const SetDailyLoginStatus = () =>{
     }
 ,{timezone: 'Asia/Kolkata'})};
 
+const fetchAndStoreQuestionsMonthly = () => {
+    cron.schedule('0 0 1 * *', async () => {
+        await fetchAndStoreQuestions();
+    }, { timezone: 'Asia/Kolkata' });
+}
+
 const initialiseCronJobs = () =>{
     SetDailyLoginStatus();
+    fetchAndStoreQuestionsMonthly();
 };
 
 export default initialiseCronJobs;

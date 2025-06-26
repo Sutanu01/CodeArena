@@ -8,12 +8,11 @@ import { handleClerkUserChange } from "./controllers/user.js";
 import { ErrorHandler } from "./middlewares/error.js";
 import CodeForcesRoute from "./routes/CodeForcesRoute.js";
 import Features from "./routes/Features.js";
+import Practice from "./routes/Practice.js";
 import UserRoute from "./routes/UserRoute.js";
-import Practice from "./routes/Practice.js"
 import { socketSetup } from "./socket.js";
 import initialiseCronJobs from "./utils/cron-jobs.js";
 import { connectToDatabase } from "./utils/db.js";
-import { fetchAndStoreQuestionsWeekly } from "./utils/utility.js";
 dotenv.config();
 
 
@@ -35,7 +34,6 @@ app.use(ErrorHandler);
 
 
 await connectToDatabase();
-fetchAndStoreQuestionsWeekly();
 socketSetup(io);
 initialiseCronJobs();
 

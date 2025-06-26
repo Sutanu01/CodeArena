@@ -274,7 +274,6 @@ const DailyPuzzlePage: React.FC = () => {
           questionId: currentQuestion.id.toString(),
           submissions: resp.data.data.submissions || [],
         });
-        console.log("Submissions set:", resp.data.data.submissions);
       }
     };
     handleFetch();

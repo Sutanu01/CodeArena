@@ -1,6 +1,5 @@
 import QuestionModel from "../models/Question.js";
 import UserModel from "../models/User.js";
-import { TryCatch } from "./features.js";
 
 const fetchAndStoreQuestions = async () => {
   const response = await fetch(
@@ -35,10 +34,6 @@ const fetchAndStoreQuestions = async () => {
       data.comment
     );
   }
-};
-const fetchAndStoreQuestionsWeekly = () => {
-  const week = 7 * 24 * 60 * 60 * 1000;
-  setInterval(fetchAndStoreQuestions, week);
 };
 
 type GetQuestionParams = {
@@ -130,4 +125,4 @@ const updateMatches = async ({
   }
 };
 
-export { fetchAndStoreQuestionsWeekly, getUnsolvedQuestionLink, updateMatches };
+export { fetchAndStoreQuestions,getUnsolvedQuestionLink, updateMatches };

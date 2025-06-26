@@ -164,8 +164,7 @@ const SubmitCode = TryCatch(
     try {
       const results: TestResult[] = [];
 
-      // for (let i = 0; i < questionTestCase.stdin.length; i++) {
-      for (let i = 0; i < 2; i++) {
+      for (let i = 0; i < questionTestCase.stdin.length; i++) {
         const input = questionTestCase.stdin[i];
         const expected = questionTestCase.stdout[i];
 
