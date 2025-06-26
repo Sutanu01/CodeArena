@@ -62,7 +62,7 @@ export default function RoomPage() {
   const dispatch = useDispatch();
 
   useEffect(() => {
-    if (params.get("roomId") !== roomId) {
+    if (params.get("roomId") !== roomId || !params.get("roomId")) {
       router.push("/not-found");
       return;
     }
