@@ -253,15 +253,18 @@ const getSubmissions = TryCatch(
     const submissions = await SubmissionsModel.findOne({
       questionId,
     });
-    submissions?.submissions.filter(
-      (submission) => submission.userId === userId
-    );
+    const filteredSubmissions = {
+      questionId: submissions?.questionId,
+      submissions: submissions?.submissions.filter(
+        (submission) => submission.userId === userId
+      ),
+    }
     sendResponse(
       200,
       true,
       "Submissions fetched successfully",
       res,
-      submissions
+      filteredSubmissions
     );
     return;
   }
