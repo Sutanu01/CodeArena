@@ -384,7 +384,7 @@ export default function HomePage() {
             <CodeforcesVerificationCard />
           )}
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {isCodeforcesVerified && <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card className="hover:shadow-lg transition-all duration-200 hover:scale-105 cursor-pointer group">
             <CardHeader>
               <div className="flex items-center space-x-2">
@@ -451,7 +451,7 @@ export default function HomePage() {
               </Button>
             </CardContent>
           </Card>
-        </div>
+        </div>}
         {isCodeforcesVerified &&
           (loading ? (
             <GraphSkeleton />
