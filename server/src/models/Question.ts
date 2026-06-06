@@ -18,6 +18,8 @@ const QuestionSchema: Schema<Question> = new Schema({
   tags: { type: [String], default: [] },
 });
 
+QuestionSchema.index({ rating: 1, questionId: 1 });
+
 const QuestionModel =
   (mongoose.models.Question as mongoose.Model<Question>) ||
   mongoose.model<Question>("Question", QuestionSchema);

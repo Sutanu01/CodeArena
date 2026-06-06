@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useAuth } from "@clerk/nextjs";
+
 const server = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export type ResponseType = {
@@ -11,6 +13,7 @@ export type ResponseType = {
 export const useVerifyCodeforcesHandle = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ResponseType | null>(null);
+  const { getToken } = useAuth();
 
   const verify = async ({
     userId,
@@ -21,9 +24,13 @@ export const useVerifyCodeforcesHandle = () => {
   }): Promise<ResponseType> => {
     setLoading(true);
     try {
+      const token = await getToken();
       const response = await fetch(`${server}/api/cf/get-status`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify({
           userId,
           codeforcesId,
@@ -75,6 +82,7 @@ export const useVerifyCodeforcesHandle = () => {
 export const useUpdateCodeforcesInfo = () => {
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<ResponseType | null>(null);
+  const { getToken } = useAuth();
 
   const update = async ({
     userId,
@@ -85,9 +93,13 @@ export const useUpdateCodeforcesInfo = () => {
   }): Promise<ResponseType> => {
     setLoading(true);
     try {
+      const token = await getToken();
       const response = await fetch(`${server}/api/cf/update-info`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify({ userId, codeforcesId }),
       });
 
@@ -127,13 +139,18 @@ export const useUpdateCodeforcesInfo = () => {
 export const useGetUserInfo = () => {
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<ResponseType | null>(null);
+  const { getToken } = useAuth();
 
   const fetchUser = async (clerkId: string): Promise<ResponseType> => {
     setLoading(true);
     try {
+      const token = await getToken();
       const response = await fetch(`${server}/api/user/get-user?clerkId=${clerkId}`, {
         method: "GET",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
       });
       const data = await response.json();
       const res = data.success
@@ -172,6 +189,8 @@ export const useGetUserInfo = () => {
 export const useUnlinkCodeforcesHandle = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ResponseType | null>(null);
+  const { getToken } = useAuth();
+
   const unlink = async (userId: string): Promise<ResponseType> => {
     setLoading(true);
     try {
@@ -184,9 +203,13 @@ export const useUnlinkCodeforcesHandle = () => {
         setResult(res);
         return res;
       }
+      const token = await getToken();
       const response = await fetch(`${server}/api/user/unlink-cf`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify({ userId }),
       });
 

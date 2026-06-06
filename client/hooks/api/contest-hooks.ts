@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAuth } from "@clerk/nextjs";
 
 const server = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -13,6 +14,7 @@ export const useGetSubmissionInfo = () => {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>([]);
   const [error, setError] = useState<string | null>(null);
+  const { getToken } = useAuth();
 
   async function fetchSubmission({
     userId1,
@@ -32,20 +34,22 @@ export const useGetSubmissionInfo = () => {
     setLoading(true);
     setError(null);
     try {
+      const token = await getToken();
+      const headers = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      };
+
       const res1 = await fetch(`${server}/api/cf/get-status`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({ userId: userId1, codeforcesId: codeforcesId1, contestId, index }),
       });
       const json1 = await res1.json();
 
       const res2 = await fetch(`${server}/api/cf/get-status`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({ userId: userId2, codeforcesId: codeforcesId2, contestId, index }),
       });
       const json2 = await res2.json();

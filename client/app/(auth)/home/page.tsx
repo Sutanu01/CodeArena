@@ -25,9 +25,8 @@ import { USER_DATA_CACHE_KEY } from "@/lib/cache-keys";
 import { getLocalCache, setLocalCache } from "@/lib/utils";
 import { MoreInfoType, User } from "@/redux/reducers/schemas";
 import { setCodeforcesVerified, setUserData } from "@/redux/reducers/user";
-import type { RootState } from "@/redux/store";
-import { SETUSER } from "@/socket/event";
 import { useSocket } from "@/socket/socket";
+import type { RootState } from "@/redux/store";
 import { useUser } from "@clerk/nextjs";
 import {
   Calendar,
@@ -57,6 +56,19 @@ import {
 } from "recharts";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+
+const getPast35Days = (): string[] => {
+  const dates = [];
+  for (let i = 34; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    dates.push(`${year}-${month}-${day}`);
+  }
+  return dates;
+};
 
 export default function HomePage() {
   const { socket } = useSocket();
@@ -172,17 +184,7 @@ export default function HomePage() {
     setLoading(isloading);
   }, [GetUserInfo.loading, updateCfHook.loading]);
 
-  useEffect(() => {
-    if (!socket || !UserData) return;
-    const setUser = () => {
-      socket.emit(SETUSER, UserData);
-    };
-    if (socket.connected) {
-      setUser();
-    } else {
-      socket.once("connect", setUser);
-    }
-  }, [socket, UserData]);
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -594,14 +596,18 @@ export default function HomePage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-7 gap-1 text-center text-xs">
-                {UserData?.login_data.map((activity, i) => (
-                  <div
-                    key={i}
-                    className={`aspect-square rounded-sm ${
-                      activity ? "bg-green-500" : "bg-muted"
-                    }`}
-                  />
-                ))}
+                {getPast35Days().map((dateStr, i) => {
+                  const isSolved = UserData?.solved_dates?.includes(dateStr);
+                  return (
+                    <div
+                      key={i}
+                      title={dateStr}
+                      className={`aspect-square rounded-sm ${
+                        isSolved ? "bg-green-500" : "bg-muted"
+                      }`}
+                    />
+                  );
+                })}
               </div>
             </CardContent>
           </Card>

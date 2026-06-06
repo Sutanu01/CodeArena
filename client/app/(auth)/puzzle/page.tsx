@@ -29,7 +29,7 @@ import {
   useSubmitCode,
   type LanguageId,
   type SubmissionResponse,
-} from "@/hooks/api/sumbit-hooks";
+} from "@/hooks/api/submit-hooks";
 import { useSelector } from "react-redux";
 import type { RootState } from "@/redux/store";
 import { toast } from "sonner";

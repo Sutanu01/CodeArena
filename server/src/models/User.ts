@@ -30,6 +30,7 @@ export interface User extends Document {
   total_matches: number;
   total_wins: number;
   login_data: Array<boolean>;
+  solved_dates: Array<string>;
   maxStreak: number;
   daily_login: boolean;
   currentStreak: number;
@@ -63,6 +64,7 @@ const UserSchema: Schema<User> = new Schema({
   total_matches: { type: Number, default: 0 },
   total_wins: { type: Number, default: 0 },
   login_data: { type: [Boolean], default: () => Array(35).fill(false) },
+  solved_dates: { type: [String], default: [] },
   maxStreak: { type: Number, default: 0 },
   currentStreak: { type: Number, default: 0 },
   match_history: {
@@ -76,6 +78,8 @@ const UserSchema: Schema<User> = new Schema({
     default: [],
   },
 });
+
+UserSchema.index({ total_wins: -1, total_matches: 1 });
 
 const UserModel =
   (mongoose.models.User as mongoose.Model<User>) ||

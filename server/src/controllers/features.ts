@@ -61,6 +61,11 @@ const dailyUpdate = TryCatch(
       sendResponse(404, false, "User not found", res);
       return;
     }
+    const authenticatedClerkId = (req as any).auth?.userId;
+    if (user.clerkId !== authenticatedClerkId) {
+      sendResponse(403, false, "Unauthorized: You cannot update another user's daily status", res);
+      return;
+    }
     if(didLogin){
       user.currentStreak += 1;
       user.maxStreak = Math.max(user.maxStreak, user.currentStreak);

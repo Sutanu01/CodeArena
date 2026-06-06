@@ -110,6 +110,11 @@ const unlinkCodeforces = TryCatch(
       sendResponse(404, false, "User not found", res);
       return;
     }
+    const authenticatedClerkId = (req as any).auth?.userId;
+    if (user.clerkId !== authenticatedClerkId) {
+      sendResponse(403, false, "Unauthorized: You cannot unlink another user's account", res);
+      return;
+    }
     user.codeforces_info = {
       username: "",
       rating: 0,

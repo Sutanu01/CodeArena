@@ -1,9 +1,10 @@
 import express from "express";
-import { SubmitCode,getSubmissions } from "../controllers/sumbitCode.js";
+import { requireAuth } from "@clerk/express";
+import { SubmitCode,getSubmissions } from "../controllers/submitCode.js";
 const router = express.Router();
 
-router.post("/sumbit", SubmitCode);
+router.post("/submit", requireAuth(), SubmitCode);
 
-router.get("/get-submissions",getSubmissions);
+router.get("/get-submissions", requireAuth(), getSubmissions);
 
 export default router;

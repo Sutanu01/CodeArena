@@ -56,6 +56,10 @@ async function runSubmission(
       source_code: Buffer.from(sourceCode).toString("base64"),
       stdin: Buffer.from(stdin).toString("base64"),
       language_id: languageId,
+      cpu_time_limit: 2.0,      // max 2 seconds cpu time
+      wall_time_limit: 5.0,     // max 5 seconds wall time
+      memory_limit: 512000,     // max 512MB RAM
+      max_processes_and_or_threads: 10
     };
 
     const postResp = await fetch(
@@ -152,6 +156,22 @@ const SubmitCode = TryCatch(
       return sendResponse(400, false, "Unsupported language", res, null);
     }
 
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      return sendResponse(404, false, "User not found", res, null);
+    }
+
+    const authenticatedClerkId = (req as any).auth?.userId;
+    if (user.clerkId !== authenticatedClerkId) {
+      return sendResponse(
+        403,
+        false,
+        "Unauthorized: You cannot submit code as another user",
+        res,
+        null
+      );
+    }
+
     const allCases: TestCaseList = testcases;
     const questionTestCase: TestCase | undefined = allCases.testcases.find(
       (tc) => tc.id === questionId
@@ -212,7 +232,15 @@ const SubmitCode = TryCatch(
         submittedAt: new Date(),
       };
       if(allPassed){
-        await UserModel.findByIdAndUpdate(userId,{$set:{daily_login:true}});
+        const todayStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - 35);
+        const cutoffStr = cutoffDate.toISOString().split('T')[0];
+
+        await UserModel.findByIdAndUpdate(userId, {
+          $addToSet: { solved_dates: todayStr },
+          $pull: { solved_dates: { $lt: cutoffStr } }
+        });
       }
       await SubmissionsModel.findOneAndUpdate(
         { questionId },
@@ -250,15 +278,25 @@ const getSubmissions = TryCatch(
       sendResponse(400, false, "questionId is required", res);
       return;
     }
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      sendResponse(404, false, "User not found", res);
+      return;
+    }
+    const authenticatedClerkId = (req as any).auth?.userId;
+    if (user.clerkId !== authenticatedClerkId) {
+      sendResponse(403, false, "Unauthorized: You cannot view this user's submissions", res);
+      return;
+    }
     const submissions = await SubmissionsModel.findOne({
       questionId,
     });
     const filteredSubmissions = {
-      questionId: submissions?.questionId,
-      submissions: submissions?.submissions.filter(
-        (submission) => submission.userId === userId
-      ),
-    }
+      questionId: submissions?.questionId || questionId,
+      submissions: submissions?.submissions
+        ? submissions.submissions.filter((submission) => submission.userId === userId)
+        : [],
+    };
     sendResponse(
       200,
       true,

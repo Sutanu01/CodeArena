@@ -1,4 +1,5 @@
 import { Server, Socket } from "socket.io";
+import crypto from "crypto";
 import { opponentRoomMap, UserIDSet, userSocketMap } from "../socket.js";
 import { getUnsolvedQuestionLink } from "./utility.js";
 import { OPPONENT_LEFT_ROOM, ROOM_DISBAND } from "../constants/socketEvents.js";
@@ -15,9 +16,9 @@ export const createRoom = ({
   upperRating?: number;
   tags?: string[];
 }) => {
-  let roomId = Math.random().toString(36).substring(2, 15).toUpperCase();
+  let roomId = crypto.randomBytes(6).toString("hex").toUpperCase();
   while (ROOMS.has(roomId)) {
-    roomId = Math.random().toString(36).substring(2, 15).toUpperCase();
+    roomId = crypto.randomBytes(6).toString("hex").toUpperCase();
   }
   ROOMS.set(roomId, {
     owner: player1_socketId,
@@ -67,22 +68,23 @@ export const deleteRoom = (roomId: string) => {
 };
 
 export const removeSocketFromRoom = (socket: Socket, io: Server) => {
-  const room = Array.from(ROOMS.values()).find(
-    (r) => r.player1 === socket.id || r.player2 === socket.id
+  const roomEntry = Array.from(ROOMS.entries()).find(
+    ([_, r]) => r.player1 === socket.id || r.player2 === socket.id
   );
-  if (room) {
+  if (roomEntry) {
+    const [roomId, room] = roomEntry;
     if (opponentRoomMap.has(socket.id)) {
-      ROOMS.delete(room.roomId);
+      ROOMS.delete(roomId);
     } else {
       if (room.owner === socket.id) {
-        io.to(room.player2).emit(ROOM_DISBAND, { roomId: room.roomId });
+        io.to(room.player2).emit(ROOM_DISBAND, { roomId: roomId });
         const opponent = userSocketMap.get(room.player2);
         if(opponent){
           UserIDSet.delete(opponent._id as string);
         }
-        ROOMS.delete(room.roomId);
+        ROOMS.delete(roomId);
       } else {
-        io.to(room.player1).emit(OPPONENT_LEFT_ROOM, { roomId: room.roomId });
+        io.to(room.player1).emit(OPPONENT_LEFT_ROOM, { roomId: roomId });
         room.player2 = null;
         room.question = null;
       }

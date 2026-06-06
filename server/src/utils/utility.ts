@@ -8,7 +8,7 @@ const fetchAndStoreQuestions = async () => {
   const data = await response.json();
   if (data.status === "OK") {
     const problems = data.result.problems;
-    for (const problem of problems) {
+    const ops = problems.map((problem: any) => {
       const question = {
         contestId: problem.contestId,
         name: problem.name,
@@ -17,17 +17,21 @@ const fetchAndStoreQuestions = async () => {
         rating: problem.rating,
         tags: problem.tags,
       };
-      try {
-        await QuestionModel.updateOne(
-          { questionId: question.questionId },
-          { $setOnInsert: question },
-          { upsert: true }
-        );
-      } catch (error) {
-        console.error("Error saving question to database:", error);
-      }
+      return {
+        updateOne: {
+          filter: { questionId: question.questionId },
+          update: { $setOnInsert: question },
+          upsert: true,
+        },
+      };
+    });
+
+    try {
+      await QuestionModel.bulkWrite(ops, { ordered: false });
+      console.log("Questions fetched and stored successfully");
+    } catch (error) {
+      console.error("Error bulk upserting questions to database:", error);
     }
-    console.log("Questions fetched and stored successfully");
   } else {
     console.error(
       "Failed to fetch questions from Codeforces API:",
@@ -70,29 +74,38 @@ const getUnsolvedQuestionLink = async ({
 
   if (!solvedByUser1 || !solvedByUser2) return null;
 
-  const unsolvedQuestions = await QuestionModel.find({
-    ...query,
-    questionId: {
-      $nin: [
-        ...solvedByUser1.codeforces_info.solved_ques.map(
-          (q: any) => q.questionId
-        ),
-        ...solvedByUser2.codeforces_info.solved_ques.map(
-          (q: any) => q.questionId
-        ),
-      ],
-    },
-  });
+  const solvedIds = [
+    ...solvedByUser1.codeforces_info.solved_ques.map(
+      (q: any) => q.questionId
+    ),
+    ...solvedByUser2.codeforces_info.solved_ques.map(
+      (q: any) => q.questionId
+    ),
+  ];
 
-  if (unsolvedQuestions.length === 0) return null;
+  try {
+    const questions = await QuestionModel.aggregate([
+      {
+        $match: {
+          ...query,
+          questionId: { $nin: solvedIds },
+        },
+      },
+      { $sample: { size: 1 } },
+    ]);
 
-  const randomIndex = Math.floor(Math.random() * unsolvedQuestions.length);
-  const question = unsolvedQuestions[randomIndex];
-  return {
-    contestId: question.contestId,
-    index: question.index,
-    link: `https://codeforces.com/problemset/problem/${question.contestId}/${question.index}`,
-  };
+    if (questions.length === 0) return null;
+
+    const question = questions[0];
+    return {
+      contestId: question.contestId,
+      index: question.index,
+      link: `https://codeforces.com/problemset/problem/${question.contestId}/${question.index}`,
+    };
+  } catch (error) {
+    console.error("Error sampling question from database:", error);
+    return null;
+  }
 };
 
 const updateMatches = async ({

@@ -1,5 +1,8 @@
 import { useState, useCallback } from "react";
+import { useAuth } from "@clerk/nextjs";
+
 const server = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
 export interface TestResult {
   testCaseIndex: number;
   pass: boolean;
@@ -55,6 +58,7 @@ export const useSubmitCode = (): UseSubmitCodeReturn => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [result, setResult] = useState<SubmissionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { getToken } = useAuth();
 
   const submitCode = useCallback(async (data: SubmissionRequest) => {
     setIsSubmitting(true);
@@ -66,10 +70,12 @@ export const useSubmitCode = (): UseSubmitCodeReturn => {
       return;
     }
     try {
-      const response = await fetch(`${server}/api/practice/sumbit`, {
+      const token = await getToken();
+      const response = await fetch(`${server}/api/practice/submit`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify(data),
       });
@@ -97,7 +103,7 @@ export const useSubmitCode = (): UseSubmitCodeReturn => {
     } finally {
       setIsSubmitting(false);
     }
-  }, []);
+  }, [getToken]);
 
   const reset = useCallback(() => {
     setIsSubmitting(false);
@@ -123,6 +129,7 @@ export const useGetSubmissions = () => {
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const { getToken } = useAuth();
 
   const fetchSubmissions = useCallback(
     async ({ userId, questionId }: GetSubmissionsParams) => {
@@ -130,12 +137,14 @@ export const useGetSubmissions = () => {
       setError(null);
 
       try {
+        const token = await getToken();
         const response = await fetch(
           `${server}/api/practice/get-submissions?userId=${userId}&questionId=${questionId}`,
           {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
             },
           }
         );
@@ -157,7 +166,7 @@ export const useGetSubmissions = () => {
         setLoading(false);
       }
     },
-    []
+    [getToken]
   );
 
   return { submissions, loading, error, fetchSubmissions };

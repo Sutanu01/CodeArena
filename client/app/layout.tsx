@@ -21,10 +21,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    
-    <StoreProvider>
-      <SocketProvider>
-        <ClerkProvider>
+    <ClerkProvider>
+      <StoreProvider>
+        <SocketProvider>
           <html lang="en" suppressHydrationWarning>
             <body className={inter.className}>
               <ThemeProvider
@@ -40,8 +39,8 @@ export default function RootLayout({
               </ThemeProvider>
             </body>
           </html>
-        </ClerkProvider>
-      </SocketProvider>
-    </StoreProvider>
+        </SocketProvider>
+      </StoreProvider>
+    </ClerkProvider>
   );
 }

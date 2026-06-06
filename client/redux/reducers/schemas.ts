@@ -29,6 +29,7 @@ export interface User{
   total_matches: number;
   total_wins: number;
   login_data: Array<boolean>;
+  solved_dates?: Array<string>;
   maxStreak: number;
   currentStreak: number;
   match_history?: Array<Match>;

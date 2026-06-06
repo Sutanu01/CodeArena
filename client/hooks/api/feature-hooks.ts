@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useAuth } from "@clerk/nextjs";
 
 const server = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -16,16 +17,19 @@ export const useLeaderboardInfo = (pageNumber: number, limitNumber: number) => {
     message: "",
     data: null,
   });
+  const { getToken } = useAuth();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
+        const token = await getToken();
         const res = await fetch(
           `${server}/api/features/leaderboard?page=${pageNumber}&limit=${limitNumber}`,
           {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
             },
           }
         );
@@ -58,51 +62,4 @@ export const useLeaderboardInfo = (pageNumber: number, limitNumber: number) => {
 
   return response;
 };
-
-
-
-//Implement CRON in backend to update daily data
-//Kal kardunga
-
-// export const useUpdateDaily = () => {
-//   const updateDaily = async (
-//     userId: string,
-//     didLogin: boolean
-//   ): Promise<responseType> => {
-//     try {
-//       const res = await fetch(`${server}/api/features/daily-update`, {
-//         method: "POST",
-//         headers: {
-//           "Content-Type": "application/json",
-//         },
-//         body: JSON.stringify({ userId, didLogin }),
-//       });
-
-//       const data = await res.json();
-
-//       if (!data.success) {
-//         return {
-//           success: false,
-//           isError: true,
-//           message: data.message,
-//         };
-//       }
-
-//       return {
-//         success: true,
-//         isError: false,
-//         message: data.message,
-//         data: data.data,
-//       };
-//     } catch (error) {
-//       return {
-//         success: false,
-//         isError: true,
-//         message: "An error occurred while updating daily data.",
-//       };
-//     }
-//   };
-
-//   return updateDaily;
-// };
 

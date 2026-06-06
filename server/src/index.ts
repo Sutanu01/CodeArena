@@ -3,6 +3,8 @@ import dotenv from "dotenv";
 import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
+import helmet from "helmet";
+import { clerkMiddleware } from "@clerk/express";
 import { corsOptions } from "./constants/configs.js";
 import { handleClerkUserChange } from "./controllers/user.js";
 import { ErrorHandler } from "./middlewares/error.js";
@@ -15,8 +17,14 @@ import initialiseCronJobs from "./utils/cron-jobs.js";
 import { connectToDatabase } from "./utils/db.js";
 dotenv.config();
 
+if (!process.env.JUDGE0_API_KEY || !process.env.JUDGE0_API_URL || !process.env.CLERK_SECRET_KEY || !process.env.CLERK_WEBHOOK_SIGNING_SECRET) {
+  console.error("CRITICAL ERROR: Missing required configuration variables (JUDGE0_API_KEY, JUDGE0_API_URL, CLERK_SECRET_KEY, CLERK_WEBHOOK_SIGNING_SECRET)");
+  process.exit(1);
+}
+
 
 const app = express();
+app.use(helmet());
 const server = createServer(app);
 app.use(cors(corsOptions as CorsOptions));
 const io = new Server(server, {
@@ -29,7 +37,7 @@ app.post(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(ErrorHandler);
+app.use(clerkMiddleware());
 
 
 
@@ -46,6 +54,7 @@ app.use('/api/user', UserRoute)
 app.use('/api/cf', CodeForcesRoute)
 app.use('/api/features', Features)
 app.use('/api/practice', Practice)
+app.use(ErrorHandler);
 
 
 const PORT = process.env.PORT || 5000;

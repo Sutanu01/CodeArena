@@ -11,9 +11,21 @@ const getSubmissionStatus = TryCatch(async (req: Request, res: Response): Promis
     return;
   }
 
+  const handleRegex = /^[a-zA-Z0-9_]{3,24}$/;
+  if (!handleRegex.test(codeforcesId)) {
+    sendResponse(400, false, "Invalid Codeforces handle format", res);
+    return;
+  }
+
   const user = await UserModel.findById(userId);
   if (!user) {
     sendResponse(404, false, "User not found", res);
+    return;
+  }
+
+  const authenticatedClerkId = (req as any).auth?.userId;
+  if (user.clerkId !== authenticatedClerkId) {
+    sendResponse(403, false, "Unauthorized: You cannot access this data", res);
     return;
   }
 
@@ -22,8 +34,9 @@ const getSubmissionStatus = TryCatch(async (req: Request, res: Response): Promis
     return;
   }
 
-  let url = `https://codeforces.com/api/user.status?handle=${codeforcesId}`;
-  if (count) { url += `&count=${count}`; }
+  const validatedCount = count ? Math.min(Math.max(1, parseInt(count, 10)), 100) : 10;
+  const encodedHandle = encodeURIComponent(codeforcesId);
+  let url = `https://codeforces.com/api/user.status?handle=${encodedHandle}&count=${validatedCount}`;
   const response = await fetch(url);
   const data = await response.json();
 
@@ -59,16 +72,29 @@ const updateCodeforcesInfo = TryCatch(async (req: Request, res: Response): Promi
     return;
   }
 
+  const handleRegex = /^[a-zA-Z0-9_]{3,24}$/;
+  if (!handleRegex.test(codeforcesId)) {
+    sendResponse(400, false, "Invalid Codeforces handle format", res);
+    return;
+  }
+
   const user = await UserModel.findById(userId);
   if (!user) {
     sendResponse(404, false, "User not found", res);
     return;
   }
 
+  const authenticatedClerkId = (req as any).auth?.userId;
+  if (user.clerkId !== authenticatedClerkId) {
+    sendResponse(403, false, "Unauthorized: You cannot update this account's details", res);
+    return;
+  }
+
+  const encodedHandle = encodeURIComponent(codeforcesId);
   const [infoRes, submissionsRes, ratingChangesRes] = await Promise.all([
-    fetch(`https://codeforces.com/api/user.info?handles=${codeforcesId}`),
-    fetch(`https://codeforces.com/api/user.status?handle=${codeforcesId}&from=1`),
-    fetch(`https://codeforces.com/api/user.rating?handle=${codeforcesId}`),
+    fetch(`https://codeforces.com/api/user.info?handles=${encodedHandle}`),
+    fetch(`https://codeforces.com/api/user.status?handle=${encodedHandle}&from=1`),
+    fetch(`https://codeforces.com/api/user.rating?handle=${encodedHandle}`),
   ]);
 
   const [infoData, submissionsData, ratingChangesData] = await Promise.all([
@@ -118,14 +144,14 @@ const updateCodeforcesInfo = TryCatch(async (req: Request, res: Response): Promi
       return acc;
     }, []);
 
-  const oldCount = user.codeforces_info.solved_ques.length;
-  const newCount = solvedQues.length;
-  const submissionDiff = newCount - oldCount;
+  const existingQuestionIds = new Set(
+    user.codeforces_info.solved_ques.map((q) => q.questionId)
+  );
 
-  const newSubmits = solvedQues.slice(0, submissionDiff);
-  if (newSubmits.length > 0) {
-    for (const submit of newSubmits) {
+  for (const submit of solvedQues) {
+    if (!existingQuestionIds.has(submit.questionId)) {
       user.codeforces_info.solved_ques.push(submit);
+      existingQuestionIds.add(submit.questionId);
     }
   }
   user.codeforces_info.rating_changes = [0, ...ratingChangesData.result.map((r: any) => r.newRating)];
