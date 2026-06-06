@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <linearGradient id="codeSignGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6" />
+      <stop offset="100%" stop-color="#06B6D4" />
+    </linearGradient>
+  </defs>
+  <path d="M10 10L4 16L10 22M22 10L28 16L22 22M18 6L14 26" stroke="url(#codeSignGrad)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+</svg>

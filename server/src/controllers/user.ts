@@ -1,6 +1,6 @@
 import UserModel from "../models/User.js";
 import { Request, Response, NextFunction } from "express";
-import { TryCatch, sendResponse } from "../utils/features.js";
+import { TryCatch, sendResponse, getAuthUserId } from "../utils/features.js";
 import { verifyWebhook } from "@clerk/express/webhooks";
 import { WebhookEvent } from "@clerk/express/webhooks";
 
@@ -110,7 +110,7 @@ const unlinkCodeforces = TryCatch(
       sendResponse(404, false, "User not found", res);
       return;
     }
-    const authenticatedClerkId = (req as any).auth?.userId;
+    const authenticatedClerkId = getAuthUserId(req);
     if (user.clerkId !== authenticatedClerkId) {
       sendResponse(403, false, "Unauthorized: You cannot unlink another user's account", res);
       return;

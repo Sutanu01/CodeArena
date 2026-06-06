@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import UserModel from "../models/User.js";
-import { sendResponse, TryCatch } from "../utils/features.js";
+import { sendResponse, TryCatch, getAuthUserId } from "../utils/features.js";
 
 const getLeaderboardInfo = TryCatch(
   async (req: Request, res: Response): Promise<void> => {
@@ -61,7 +61,7 @@ const dailyUpdate = TryCatch(
       sendResponse(404, false, "User not found", res);
       return;
     }
-    const authenticatedClerkId = (req as any).auth?.userId;
+    const authenticatedClerkId = getAuthUserId(req);
     if (user.clerkId !== authenticatedClerkId) {
       sendResponse(403, false, "Unauthorized: You cannot update another user's daily status", res);
       return;

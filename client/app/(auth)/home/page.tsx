@@ -59,9 +59,14 @@ import { useRouter } from "next/navigation";
 
 const getPast35Days = (): string[] => {
   const dates = [];
-  for (let i = 34; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const startDate = new Date();
+  startDate.setDate(today.getDate() - dayOfWeek - 28);
+
+  for (let i = 0; i < 35; i++) {
+    const d = new Date(startDate);
+    d.setDate(startDate.getDate() + i);
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, "0");
     const day = String(d.getDate()).padStart(2, "0");
@@ -85,7 +90,7 @@ export default function HomePage() {
   //STATEs
   const [isCustomRoomOpen, setIsCustomRoomOpen] = useState(false);
   const [is1v1Mode, set1v1Mode] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [pageReady, setPageReady] = useState(false);
   const [moreInfo, setMoreInfo] = useState<MoreInfoType>({
     winrate: 0,
     losses: 0,
@@ -120,69 +125,80 @@ export default function HomePage() {
     setMoreInfo({ winrate, losses, ratingData: ratingChanges });
   };
 
-  const updateUser = async (setcache: boolean) => {
-    const resp = await GetUserInfo.fetchUser(user?.id || "");
-    if (resp.success) {
-      dispatch(setUserData(resp.data));
-      updateMoreInfo(resp.data);
-      dispatch(setCodeforcesVerified(!!resp.data.codeforces_info?.username));
-      if (setcache) {
-        setLocalCache(USER_DATA_CACHE_KEY, resp.data, 10);
+  const fetchUserAndSync = async () => {
+    try {
+      // 1. Fetch user data from DB
+      const resp = await GetUserInfo.fetchUser(user?.id || "");
+      if (!resp.success) {
+        console.error("Failed to fetch user info:", resp.message);
+        toast.error("Failed to fetch user info");
+        return;
       }
-    } else {
-      console.error("Failed to fetch user info:", resp.message);
-      toast.error("Failed to fetch user info");
+
+      let finalUser = resp.data;
+      dispatch(setCodeforcesVerified(!!finalUser.codeforces_info?.username));
+
+      // 2. If Codeforces handle is linked, sync latest data from CF API
+      if (finalUser.codeforces_info?.username) {
+        const updateResp = await updateCfHook.update({
+          userId: finalUser._id as string,
+          codeforcesId: finalUser.codeforces_info.username,
+        });
+
+        if (updateResp.success && updateResp.data) {
+          // Use the updated user object returned by the server directly
+          finalUser = updateResp.data;
+        } else {
+          console.error("Failed to sync Codeforces data:", updateResp.message);
+        }
+      }
+
+      // 3. Dispatch final user data, compute derived state, and cache
+      dispatch(setUserData(finalUser));
+      updateMoreInfo(finalUser);
+      setLocalCache(USER_DATA_CACHE_KEY, finalUser, 10);
+    } finally {
+      setPageReady(true);
     }
   };
 
-  const updateCodeforcesInfo = async () => {
-    if (!UserData?.codeforces_info?.username) {
-      await updateUser(false);
-      setLoading(false);
-      return;
-    }
-    const resp = await updateCfHook.update({
-      userId: UserData._id as string,
-      codeforcesId: UserData.codeforces_info.username,
-    });
-    if (resp.success) {
-      await updateUser(true);
-      toast.success("Data Updated Successfully");
-    } else {
-      console.error(
-        "Failed to update Codeforces info:",
-        updateCfHook.result?.message
-      );
-      toast.error("Error fetching Codeforces info");
-    }
-  };
-
-  const handleRefreshCodeforces = () => {
+  const handleRefreshCodeforces = async () => {
     if (getLocalCache<User>(USER_DATA_CACHE_KEY)) {
       toast.info("Wait a few minutes before updating again...");
       return;
     }
-    updateCodeforcesInfo();
+    if (!UserData?.codeforces_info?.username) return;
+
+    const updateResp = await updateCfHook.update({
+      userId: UserData._id as string,
+      codeforcesId: UserData.codeforces_info.username,
+    });
+
+    if (updateResp.success && updateResp.data) {
+      const updatedUser = updateResp.data;
+      dispatch(setUserData(updatedUser));
+      updateMoreInfo(updatedUser);
+      setLocalCache(USER_DATA_CACHE_KEY, updatedUser, 10);
+      toast.success("Data Updated Successfully");
+    } else {
+      console.error("Refresh failed:", updateResp.message);
+      toast.error("Error fetching Codeforces info");
+    }
   };
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
+
     const cached = getLocalCache<User>(USER_DATA_CACHE_KEY);
     if (cached) {
-      GetUserInfo.setLoading(false);
-      updateCfHook.setLoading(false);
       dispatch(setUserData(cached));
       updateMoreInfo(cached);
       dispatch(setCodeforcesVerified(!!cached.codeforces_info?.username));
+      setPageReady(true);
     } else {
-      updateCodeforcesInfo();
+      fetchUserAndSync();
     }
-  }, [user, isLoaded, isSignedIn, isCodeforcesVerified]);
-
-  useEffect(() => {
-    const isloading = GetUserInfo.loading || updateCfHook.loading;
-    setLoading(isloading);
-  }, [GetUserInfo.loading, updateCfHook.loading]);
+  }, [user?.id, isLoaded, isSignedIn]);
 
 
 
@@ -191,15 +207,15 @@ export default function HomePage() {
       <Navbar />
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          {loading ? (
+          {!pageReady ? (
             <CardSkeleton />
           ) : (
             <Card className="lg:col-span-2">
               <CardHeader>
                 <div className="flex flex-col space-y-2 mb-2">
-                  <h1 className="text-3xl font-extrabold text-blue-900">
+                  <h1 className="text-3xl font-extrabold text-foreground">
                     Welcome back,{" "}
-                    <span className="text-blue-500 font-semibold text-5xl">
+                    <span className="text-cyan-600 dark:text-cyan-400 font-semibold text-5xl">
                       {UserData?.username
                         .slice(0, 1)
                         .toUpperCase()
@@ -283,7 +299,7 @@ export default function HomePage() {
               </CardContent>
             </Card>
           )}
-          {loading ? (
+          {!pageReady ? (
             <CFCardSkeleton />
           ) : isCodeforcesVerified ? (
             <Card>
@@ -302,10 +318,13 @@ export default function HomePage() {
                     variant="ghost"
                     size="sm"
                     onClick={handleRefreshCodeforces}
+                    disabled={updateCfHook.loading}
                     className="flex items-center space-x-2 bg-blue-100 text-blue-900 hover:bg-blue-200 dark:bg-blue-300 dark:hover:bg-blue-400 dark:hover:text-blue-900"
                   >
-                    <RefreshCw className="h-5 w-5" />
-                    <span className="text-sm font-medium">Refresh</span>
+                    <RefreshCw className={`h-5 w-5 ${updateCfHook.loading ? 'animate-spin' : ''}`} />
+                    <span className="text-sm font-medium">
+                      {updateCfHook.loading ? "Syncing..." : "Refresh"}
+                    </span>
                   </Button>
                 </div>
               </CardHeader>
@@ -455,7 +474,7 @@ export default function HomePage() {
           </Card>
         </div>}
         {isCodeforcesVerified &&
-          (loading ? (
+          (!pageReady ? (
             <GraphSkeleton />
           ) : (
             <Card className="mb-8">
@@ -470,101 +489,107 @@ export default function HomePage() {
               </CardHeader>
               <CardContent>
                 <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart
-                      data={moreInfo.ratingData}
-                      width={600}
-                      height={300}
-                      margin={{
-                        top: 0,
-                        right: 15,
-                        left: 0,
-                        bottom: 5,
-                      }}
-                    >
-                      <defs>
-                        <linearGradient
-                          id="ratingGradient"
-                          x1="1"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop
-                            offset="5%"
-                            stopColor="#3b82f6"
-                            stopOpacity={0.3}
-                          />
-                          <stop
-                            offset="95%"
-                            stopColor="#3b82f6"
-                            stopOpacity={0}
-                          />
-                        </linearGradient>
-                      </defs>
-
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        className="opacity-30"
-                      />
-
-                      <XAxis
-                        dataKey="contestNumber"
-                        className="text-xs"
-                        tick={{ fontSize: 12 }}
-                        label={{
-                          value: "Contest",
-                          position: "insideBottom",
-                          offset: -5,
+                  {pageReady ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart
+                        data={moreInfo.ratingData}
+                        width={600}
+                        height={300}
+                        margin={{
+                          top: 0,
+                          right: 15,
+                          left: 0,
+                          bottom: 5,
                         }}
-                        interval={4}
-                      />
+                      >
+                        <defs>
+                          <linearGradient
+                            id="ratingGradient"
+                            x1="1"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                          >
+                            <stop
+                              offset="5%"
+                              stopColor="#3b82f6"
+                              stopOpacity={0.3}
+                            />
+                            <stop
+                              offset="95%"
+                              stopColor="#3b82f6"
+                              stopOpacity={0}
+                            />
+                          </linearGradient>
+                        </defs>
 
-                      <YAxis
-                        domain={["0", "dataMax + 200"]}
-                        className="text-xs"
-                        tick={{ fontSize: 12 }}
-                        label={{
-                          value: "Rating",
-                          angle: -90,
-                          position: "insideLeft",
-                        }}
-                      />
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          className="opacity-30"
+                        />
 
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "8px",
-                          fontSize: "14px",
-                        }}
-                        formatter={(value, name) => [`${value}`, "Rating"]}
-                        labelFormatter={(label) => `Contest #${label}`}
-                      />
+                        <XAxis
+                          dataKey="contestNumber"
+                          className="text-xs"
+                          tick={{ fontSize: 12 }}
+                          label={{
+                            value: "Contest",
+                            position: "insideBottom",
+                            offset: -5,
+                          }}
+                          interval={4}
+                        />
 
-                      <Area
-                        type="monotone"
-                        dataKey="rating"
-                        stroke="#3b82f6"
-                        strokeWidth={2}
-                        fill="url(#ratingGradient)"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                        <YAxis
+                          domain={["0", "dataMax + 200"]}
+                          className="text-xs"
+                          tick={{ fontSize: 12 }}
+                          label={{
+                            value: "Rating",
+                            angle: -90,
+                            position: "insideLeft",
+                          }}
+                        />
+
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "8px",
+                            fontSize: "14px",
+                          }}
+                          formatter={(value, name) => [`${value}`, "Rating"]}
+                          labelFormatter={(label) => `Contest #${label}`}
+                        />
+
+                        <Area
+                          type="monotone"
+                          dataKey="rating"
+                          stroke="#3b82f6"
+                          strokeWidth={2}
+                          fill="url(#ratingGradient)"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="w-full h-full bg-muted animate-pulse rounded" />
+                  )}
                 </div>
                 <div className="flex justify-between items-center mt-4 pt-4 border-t text-sm text-muted-foreground">
                   <div>
                     Peak Rating:{" "}
                     <span className="font-medium text-foreground">
-                      {UserData?.codeforces_info.maxRating}
+                      {UserData?.codeforces_info?.maxRating || "N/A"}
                     </span>
                   </div>
                   <div>
                     Last Rating Change:{" "}
                     <span
                       className={`font-medium ${
-                        calculateLastChange(moreInfo.ratingData)[0] == "+"
+                        calculateLastChange(moreInfo.ratingData)[0] === "+"
                           ? "text-green-600"
+                          : calculateLastChange(moreInfo.ratingData) === "0" || calculateLastChange(moreInfo.ratingData) === "N/A"
+                          ? "text-muted-foreground"
                           : "text-red-500"
                       }`}
                     >
@@ -574,7 +599,7 @@ export default function HomePage() {
                   <div>
                     Total Contests:{" "}
                     <span className="font-medium text-foreground">
-                      {moreInfo.ratingData.length - 1}
+                      {moreInfo.ratingData.length > 0 ? moreInfo.ratingData.length - 1 : 0}
                     </span>
                   </div>
                 </div>
@@ -595,7 +620,12 @@ export default function HomePage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-7 gap-1 text-center text-xs">
+              <div className="grid grid-cols-7 gap-1.5 text-center text-xs">
+                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                  <div key={day} className="text-muted-foreground font-semibold text-[10px] pb-1">
+                    {day}
+                  </div>
+                ))}
                 {getPast35Days().map((dateStr, i) => {
                   const isSolved = UserData?.solved_dates?.includes(dateStr);
                   return (
@@ -627,34 +657,36 @@ export default function HomePage() {
                       .map((match, i) => (
                         <div
                           key={i}
-                          className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                          className="flex items-center justify-between p-3.5 rounded-xl bg-black/5 dark:bg-black/20 hover:bg-black/10 dark:hover:bg-black/35 border border-border/30 dark:border-black/15 transition-all duration-200 shadow-sm hover:shadow"
                         >
-                          <div className="flex items-center space-x-3">
+                          <div className="flex items-center space-x-3.5">
                             <div
-                              className={`w-3 h-3 rounded-full ${
+                              className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
                                 match.result === "Win"
-                                  ? "bg-green-500"
+                                  ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]"
                                   : match.result === "Draw"
-                                  ? "bg-yellow-300"
-                                  : "bg-red-500"
+                                  ? "bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.5)]"
+                                  : "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]"
                               }`}
                             />
                             <div>
-                              <div className="font-medium">
+                              <div className="font-semibold text-foreground text-sm flex items-center gap-1">
+                                <span className="text-muted-foreground font-normal text-xs uppercase tracking-wider mr-0.5">vs</span>
                                 {match.opponent}
                               </div>
-                              <div className="text-sm text-muted-foreground">
-                                {new Date(match.date).toLocaleDateString()}
+                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1.5">
+                                <Clock className="w-3.5 h-3.5 opacity-60" />
+                                <span>{new Date(match.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                               </div>
                             </div>
                           </div>
                           <div
-                            className={`px-3 py-1 rounded-full text-xs font-semibold text-white ${
+                            className={`px-3 py-1 rounded-full text-xs font-semibold ${
                               match.result === "Win"
-                                ? "bg-green-600"
+                                ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border border-green-200/50 dark:border-green-900/50"
                                 : match.result === "Draw"
-                                ? "bg-yellow-500 text-black"
-                                : "bg-red-600"
+                                ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border border-yellow-200/50 dark:border-yellow-900/50"
+                                : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border border-red-200/50 dark:border-red-900/50"
                             }`}
                           >
                             {match.result}

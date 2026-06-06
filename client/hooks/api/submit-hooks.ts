@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useAuth } from "@clerk/nextjs";
 
 const server = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -54,58 +54,146 @@ interface UseSubmitCodeReturn {
   reset: () => void;
 }
 
+const POLL_INTERVAL_MS = 2000;
+const MAX_POLL_ATTEMPTS = 120;
+
 export const useSubmitCode = (): UseSubmitCodeReturn => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [result, setResult] = useState<SubmissionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { getToken } = useAuth();
 
-  const submitCode = useCallback(async (data: SubmissionRequest) => {
-    setIsSubmitting(true);
-    setError(null);
-    setResult(null);
-    if (data.userId === null) {
-      setError("User ID is required");
-      setIsSubmitting(false);
-      return;
-    }
-    try {
-      const token = await getToken();
-      const response = await fetch(`${server}/api/practice/submit`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify(data),
-      });
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollAttemptsRef = useRef<number>(0);
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
+  }, []);
+
+
+  const startPolling = useCallback(
+    async (jobId: string) => {
+      pollAttemptsRef.current = 0;
+
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
       }
 
-      const apiResponse: ApiResponse = await response.json();
+      pollIntervalRef.current = setInterval(async () => {
+        pollAttemptsRef.current += 1;
 
-      if (!apiResponse.success) {
-        throw new Error(apiResponse.message || "Submission failed");
+        if (pollAttemptsRef.current > MAX_POLL_ATTEMPTS) {
+          clearInterval(pollIntervalRef.current!);
+          pollIntervalRef.current = null;
+          setError("Submission timed out. Please try again.");
+          setIsSubmitting(false);
+          return;
+        }
+
+        try {
+          const token = await getToken();
+          const response = await fetch(
+            `${server}/api/practice/status/${jobId}`,
+            {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+
+          if (data.data?.status === "completed") {
+            clearInterval(pollIntervalRef.current!);
+            pollIntervalRef.current = null;
+            setResult(data.data.result);
+            setIsSubmitting(false);
+          } else if (data.data?.status === "failed") {
+            clearInterval(pollIntervalRef.current!);
+            pollIntervalRef.current = null;
+            setError(data.data.error || "Submission failed");
+            setIsSubmitting(false);
+          }
+        } catch (err) {
+          console.error("Poll error:", err);
+        }
+      }, POLL_INTERVAL_MS);
+    },
+    [getToken]
+  );
+
+  const submitCode = useCallback(
+    async (data: SubmissionRequest) => {
+      setIsSubmitting(true);
+      setError(null);
+      setResult(null);
+      if (data.userId === null) {
+        setError("User ID is required");
+        setIsSubmitting(false);
+        return;
       }
+      try {
+        const token = await getToken();
+        const response = await fetch(`${server}/api/practice/submit`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(data),
+        });
 
-      if (!apiResponse.data) {
-        throw new Error("No data received from server");
+        if (response.status === 429) {
+          setError("Too many submissions. Please wait a moment and try again.");
+          setIsSubmitting(false);
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const apiResponse = await response.json();
+
+        if (!apiResponse.success) {
+          throw new Error(apiResponse.message || "Submission failed");
+        }
+
+        // Server returns 202 with { jobId } — start polling
+        const jobId = apiResponse.data?.jobId;
+        if (jobId) {
+          startPolling(jobId);
+        } else {
+          throw new Error("No job ID received from server");
+        }
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "An unknown error occurred";
+        setError(errorMessage);
+        setIsSubmitting(false);
+        console.error("Submit code error:", err);
       }
-
-      setResult(apiResponse.data);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "An unknown error occurred";
-      setError(errorMessage);
-      console.error("Submit code error:", err);
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [getToken]);
+    },
+    [getToken, startPolling]
+  );
 
   const reset = useCallback(() => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
     setIsSubmitting(false);
     setResult(null);
     setError(null);
@@ -144,13 +232,13 @@ export const useGetSubmissions = () => {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
-              "Authorization": `Bearer ${token}`
+              Authorization: `Bearer ${token}`,
             },
           }
         );
 
         if (!response.ok) {
-          return {error: `HTTP error! status: ${response.status}`};
+          return { error: `HTTP error! status: ${response.status}` };
         }
 
         const data = await response.json();

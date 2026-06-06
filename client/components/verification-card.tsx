@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ExternalLink, X, CheckCircle, AlertCircle } from "lucide-react";
+import { ExternalLink, X, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -16,9 +16,9 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useVerifyCodeforcesHandle } from "@/hooks/api/user-hooks";
-import { setCodeforcesVerified,setCodeforcesHandle } from "@/redux/reducers/user";
-import { useDispatch,useSelector } from "react-redux";
+import { useVerifyCodeforcesHandle, useUpdateCodeforcesInfo } from "@/hooks/api/user-hooks";
+import { setCodeforcesVerified, setCodeforcesHandle, setUserData } from "@/redux/reducers/user";
+import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import { removeLocalCache } from "@/lib/utils";
 import { USER_DATA_CACHE_KEY } from "@/lib/cache-keys";
@@ -29,10 +29,11 @@ export function CodeforcesVerificationCard() {
   const [handle, setHandle] = useState("");
   const [countdown, setCountdown] = useState(120); // seconds
   const [verified, setVerified] = useState<boolean | null>(null);
-  const { verify,loading,result }=useVerifyCodeforcesHandle();
+  const { verify, loading, result } = useVerifyCodeforcesHandle();
+  const { update, loading: updateLoading } = useUpdateCodeforcesInfo();
   const timerRef = useRef<number>(0);
   const dispatch = useDispatch();
-  const {UserData,isCodeforcesVerified} = useSelector((state:RootState) => state.user);
+  const { UserData, isCodeforcesVerified } = useSelector((state: RootState) => state.user);
 
   useEffect(() => {
     if (step === 2) {
@@ -68,20 +69,33 @@ export function CodeforcesVerificationCard() {
 
   const finishVerification = async () => {
     const resp = await verify({
-      userId:UserData?._id as string,
+      userId: UserData?._id as string,
       codeforcesId: handle,
     });
     if (resp.success) {
-      removeLocalCache(USER_DATA_CACHE_KEY);
-      dispatch(setCodeforcesHandle(handle));
-      setVerified(resp.success);
-      dispatch(setCodeforcesVerified(true));
-      setStep(3);
+      const updateResp = await update({
+        userId: UserData?._id as string,
+        codeforcesId: handle,
+      });
+      if (updateResp.success) {
+        removeLocalCache(USER_DATA_CACHE_KEY);
+        dispatch(setCodeforcesHandle(handle));
+        if (updateResp.data) {
+          dispatch(setUserData(updateResp.data));
+        }
+        setVerified(true);
+        dispatch(setCodeforcesVerified(true));
+        setStep(3);
+      } else {
+        setVerified(false);
+        setStep(3);
+        console.error("Update failed:", updateResp.message || "Unknown error during update");
+      }
     }
     else {
       setVerified(false);
       setStep(3);
-      console.error("Verification failed:", result?.message || "Unknown error");
+      console.error("Verification failed:", resp.message || "Unknown error");
     }
   };
 
@@ -200,11 +214,21 @@ export function CodeforcesVerificationCard() {
               </ol>
 
               <DialogFooter className="pt-4">
-                <Button variant="outline" onClick={close}>
+                <Button variant="outline" onClick={close} disabled={loading || updateLoading}>
                   Cancel
                 </Button>
-                <Button disabled={countdown === 0} onClick={finishVerification}>
-                  Verify Now
+                <Button
+                  disabled={countdown === 0 || loading || updateLoading}
+                  onClick={finishVerification}
+                >
+                  {loading || updateLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {loading ? "Verifying..." : "Updating Stats..."}
+                    </>
+                  ) : (
+                    "Verify Now"
+                  )}
                 </Button>
               </DialogFooter>
             </>

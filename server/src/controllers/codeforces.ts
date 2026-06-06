@@ -1,6 +1,6 @@
 import QuestionModel from "../models/Question.js";
 import { Request, Response } from "express";
-import { sendResponse, TryCatch } from "../utils/features.js";
+import { sendResponse, TryCatch, getAuthUserId } from "../utils/features.js";
 import UserModel from "../models/User.js";
 
 const getSubmissionStatus = TryCatch(async (req: Request, res: Response): Promise<void> => {
@@ -23,7 +23,7 @@ const getSubmissionStatus = TryCatch(async (req: Request, res: Response): Promis
     return;
   }
 
-  const authenticatedClerkId = (req as any).auth?.userId;
+  const authenticatedClerkId = getAuthUserId(req);
   if (user.clerkId !== authenticatedClerkId) {
     sendResponse(403, false, "Unauthorized: You cannot access this data", res);
     return;
@@ -84,7 +84,7 @@ const updateCodeforcesInfo = TryCatch(async (req: Request, res: Response): Promi
     return;
   }
 
-  const authenticatedClerkId = (req as any).auth?.userId;
+  const authenticatedClerkId = getAuthUserId(req);
   if (user.clerkId !== authenticatedClerkId) {
     sendResponse(403, false, "Unauthorized: You cannot update this account's details", res);
     return;
@@ -157,7 +157,7 @@ const updateCodeforcesInfo = TryCatch(async (req: Request, res: Response): Promi
   user.codeforces_info.rating_changes = [0, ...ratingChangesData.result.map((r: any) => r.newRating)];
 
   await user.save();
-  sendResponse(200, true, "Codeforces info updated successfully", res);
+  sendResponse(200, true, "Codeforces info updated successfully", res, user);
   return;
 });
 

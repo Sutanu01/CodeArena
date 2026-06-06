@@ -32,6 +32,8 @@ import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { toast } from "sonner";
 import { useSocket } from "@/socket/socket";
+import { removeLocalCache } from "@/lib/utils";
+import { USER_DATA_CACHE_KEY } from "@/lib/cache-keys";
 import {
   DRAW_MATCH,
   LEFT_MATCH,
@@ -87,6 +89,7 @@ export default function RoomPage() {
 
   const confirmLeave = () => {
     socket?.emit(LEFT_MATCH);
+    removeLocalCache(USER_DATA_CACHE_KEY);
     router.push("/home");
   };
 
@@ -103,6 +106,7 @@ export default function RoomPage() {
   const handleReturnToHome = () => {
     setShowResultModal(false);
     dispatch(deleteMatch());
+    removeLocalCache(USER_DATA_CACHE_KEY);
     router.push("/home");
   };
   useEffect(() => {

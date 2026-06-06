@@ -1,0 +1,245 @@
+import dotenv from "dotenv";
+import type { TestCase, TestCaseList } from "../types/TC-type.js";
+import { testcases } from "../Data/TestCases.js";
+import SubmissionsModel, { type Submission } from "../models/Submissions.js";
+import UserModel from "../models/User.js";
+
+dotenv.config();
+
+
+const JUDGE0_URL: string = process.env.JUDGE0_API_URL!;
+const JUDGE0_KEY: string = process.env.JUDGE0_API_KEY!;
+
+const LANG_MAP: Record<string, number> = {
+  "C++": 54,
+  Java: 62,
+  Python: 71,
+  JavaScript: 63,
+  Rust: 73,
+  TypeScript: 74,
+};
+
+const delay = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+interface Judge0Result {
+  stdout: string;
+  stderr: string;
+  status: string;
+}
+
+export interface TestResult {
+  testCaseIndex: number;
+  pass: boolean;
+  expected: string;
+  got: string;
+  status: string;
+  error: string | null;
+}
+
+export interface SubmissionJobData {
+  userId: string;
+  questionId: string;
+  sourceCode: string;
+  language: string;
+}
+
+export interface SubmissionJobResult {
+  questionId: string;
+  summary: {
+    total: number;
+    passed: number;
+    failed: number;
+    allPassed: boolean;
+  };
+  results: TestResult[];
+}
+
+
+async function runSubmission(
+  sourceCode: string,
+  languageId: number,
+  stdin: string
+): Promise<Judge0Result> {
+  try {
+    const payload = {
+      source_code: Buffer.from(sourceCode).toString("base64"),
+      stdin: Buffer.from(stdin).toString("base64"),
+      language_id: languageId,
+      cpu_time_limit: 2.0,
+      wall_time_limit: 5.0,
+      memory_limit: 512000,
+      max_processes_and_or_threads: 10,
+    };
+
+    const postResp = await fetch(
+      `${JUDGE0_URL}/submissions?base64_encoded=true&wait=false`,
+      {
+        method: "POST",
+        headers: {
+          "X-RapidAPI-Key": JUDGE0_KEY,
+          "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    if (!postResp.ok) {
+      const errorText = await postResp.text();
+      console.error("[Judge0] Error response:", errorText);
+      throw new Error(
+        `Failed to submit code: ${postResp.status} ${postResp.statusText} - ${errorText}`
+      );
+    }
+
+    const postData = await postResp.json();
+    const token: string = postData.token;
+
+    if (!token) {
+      console.error("[Judge0] No token in response:", postData);
+      throw new Error("No token received from Judge0");
+    }
+
+    let attempts = 0;
+    const maxAttempts = 50;
+    while (attempts < maxAttempts) {
+      const getResp = await fetch(
+        `${JUDGE0_URL}/submissions/${token}?base64_encoded=true`,
+        {
+          headers: {
+            "X-RapidAPI-Key": JUDGE0_KEY,
+            "X-RapidAPI-Host": new URL(JUDGE0_URL).host,
+          },
+        }
+      );
+      if (!getResp.ok) {
+        const errorText = await getResp.text();
+        console.error("[Judge0] Get error:", errorText);
+        throw new Error(
+          `Failed to get submission result: ${getResp.status} ${getResp.statusText}`
+        );
+      }
+      const data = await getResp.json();
+      if (data.status.id >= 3) {
+        return {
+          stdout: data.stdout
+            ? Buffer.from(data.stdout, "base64").toString()
+            : "",
+          stderr: data.stderr
+            ? Buffer.from(data.stderr, "base64").toString()
+            : "",
+          status: data.status.description,
+        };
+      }
+      await delay(200);
+      attempts++;
+    }
+    throw new Error("Submission timed out");
+  } catch (error) {
+    console.error("[Judge0] Error in runSubmission:", error);
+    throw error;
+  }
+}
+
+
+export async function processSubmissionJob(
+  data: SubmissionJobData
+): Promise<SubmissionJobResult> {
+  const { userId, questionId, sourceCode, language } = data;
+
+  const languageId = LANG_MAP[language];
+  if (!languageId) {
+    throw new Error(`Unsupported language: ${language}`);
+  }
+
+  const allCases: TestCaseList = testcases;
+  const questionTestCase: TestCase | undefined = allCases.testcases.find(
+    (tc) => tc.id === questionId
+  );
+
+  if (!questionTestCase) {
+    throw new Error(`Question not found: ${questionId}`);
+  }
+
+  const results: TestResult[] = [];
+
+  for (let i = 0; i < questionTestCase.stdin.length; i++) {
+    const input = questionTestCase.stdin[i];
+    const expected = questionTestCase.stdout[i];
+
+    try {
+      const result = await runSubmission(sourceCode, languageId, input);
+      const gotTrimmed = result.stdout.trim();
+      const expectedTrimmed = expected.trim();
+      const pass = gotTrimmed === expectedTrimmed;
+      results.push({
+        testCaseIndex: i + 1,
+        pass,
+        expected: expectedTrimmed,
+        got: gotTrimmed,
+        status: result.status,
+        error: result.stderr || null,
+      });
+
+      if (i < questionTestCase.stdin.length - 1) {
+        await delay(100);
+      }
+    } catch (error) {
+      console.error(`[Processor] Error running test case ${i + 1}:`, error);
+      results.push({
+        testCaseIndex: i + 1,
+        pass: false,
+        expected: expected.trim(),
+        got: "",
+        status: "Runtime Error",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
+  const totalTests = results.length;
+  const passedTests = results.filter((r) => r.pass).length;
+  const allPassed = passedTests === totalTests;
+
+  // --- Persist to MongoDB ---
+  const newSubmission: Submission = {
+    userId,
+    verdict: {
+      success: allPassed,
+      message: allPassed
+        ? "All test cases passed"
+        : `${totalTests - passedTests} test cases failed`,
+    },
+    submittedAt: new Date(),
+  };
+
+  if (allPassed) {
+    const todayStr = new Date().toISOString().split("T")[0];
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - 35);
+    const cutoffStr = cutoffDate.toISOString().split("T")[0];
+
+    await UserModel.findByIdAndUpdate(userId, {
+      $addToSet: { solved_dates: todayStr },
+      $pull: { solved_dates: { $lt: cutoffStr } },
+    });
+  }
+
+  await SubmissionsModel.findOneAndUpdate(
+    { questionId },
+    { $push: { submissions: newSubmission } },
+    { upsert: true, new: true }
+  );
+
+  return {
+    questionId,
+    summary: {
+      total: totalTests,
+      passed: passedTests,
+      failed: totalTests - passedTests,
+      allPassed,
+    },
+    results,
+  };
+}

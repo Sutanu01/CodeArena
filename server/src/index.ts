@@ -15,10 +15,17 @@ import UserRoute from "./routes/UserRoute.js";
 import { socketSetup } from "./socket.js";
 import initialiseCronJobs from "./utils/cron-jobs.js";
 import { connectToDatabase } from "./utils/db.js";
+import { getRedisClient, closeRedis } from "./config/redis.js";
+import { initSubmissionWorker, closeSubmissionWorker } from "./queues/submission.queue.js";
 dotenv.config();
 
-if (!process.env.JUDGE0_API_KEY || !process.env.JUDGE0_API_URL || !process.env.CLERK_SECRET_KEY || !process.env.CLERK_WEBHOOK_SIGNING_SECRET) {
-  console.error("CRITICAL ERROR: Missing required configuration variables (JUDGE0_API_KEY, JUDGE0_API_URL, CLERK_SECRET_KEY, CLERK_WEBHOOK_SIGNING_SECRET)");
+if (!process.env.JUDGE0_API_KEY || !process.env.JUDGE0_API_URL || !process.env.CLERK_SECRET_KEY || !process.env.CLERK_PUBLISHABLE_KEY || !process.env.CLERK_WEBHOOK_SIGNING_SECRET) {
+  console.error("CRITICAL ERROR: Missing required configuration variables (JUDGE0_API_KEY, JUDGE0_API_URL, CLERK_SECRET_KEY, CLERK_PUBLISHABLE_KEY, CLERK_WEBHOOK_SIGNING_SECRET)");
+  process.exit(1);
+}
+
+if (!process.env.REDIS_URL) {
+  console.error("CRITICAL ERROR: REDIS_URL environment variable is not set.");
   process.exit(1);
 }
 
@@ -41,10 +48,15 @@ app.use(clerkMiddleware());
 
 
 
-await connectToDatabase();
-socketSetup(io);
-initialiseCronJobs();
+const redis = getRedisClient();
+await redis.connect();
 
+await connectToDatabase();
+await socketSetup(io);
+
+const submissionWorker = initSubmissionWorker();
+
+initialiseCronJobs();
 
 
 app.get('/', (req, res) => {
@@ -61,3 +73,18 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
+
+
+async function gracefulShutdown(signal: string) {
+  console.log(`\n[Server] Received ${signal}. Shutting down gracefully...`);
+  server.close(() => {
+    console.log("[Server] HTTP server closed.");
+  });
+  await closeSubmissionWorker();
+  await closeRedis();
+
+  console.log("[Server] All connections closed. Exiting.");
+  process.exit(0);
+}
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));

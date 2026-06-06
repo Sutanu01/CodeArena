@@ -27,4 +27,7 @@ export const sendResponse = (
     ...(extraData && { data: extraData }),
   });
 };
-
+export const getAuthUserId = (req: Request): string | null | undefined => {
+  const auth = typeof (req as any).auth === "function" ? (req as any).auth() : (req as any).auth;
+  return auth?.userId;
+};

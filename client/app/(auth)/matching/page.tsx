@@ -199,10 +199,10 @@ export default function MatchingPage() {
   if (waitingRoom) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 flex items-center justify-center p-4">
-        <Card className="w-full max-w-[40rem] bg-white z-50 relative shadow-2xl">
+        <Card className="w-full max-w-[40rem] bg-card text-card-foreground border border-border z-50 relative shadow-2xl">
           <CardContent className="p-4 space-y-4">
             <div className="text-center mb-4">
-              <h2 className="text-xl font-bold mb-2">Battle Arena</h2>
+              <h2 className="text-xl font-bold mb-2 text-foreground">Battle Arena</h2>
             </div>
 
             <div className="grid grid-cols-2 gap-4 relative">
@@ -214,7 +214,7 @@ export default function MatchingPage() {
                   </div>
                 </div>
                 <div>
-                  <h4 className="font-semibold text-black">You</h4>
+                  <h4 className="font-semibold text-foreground">You</h4>
                   <p className="text-muted-foreground text-xs">
                     {isReady ? "Ready to battle" : "Preparing..."}
                   </p>
@@ -222,16 +222,16 @@ export default function MatchingPage() {
                 <div className="bg-muted/30 rounded-lg p-2">
                   <div className="flex justify-evenly text-xs text-muted-foreground">
                     <div className="flex flex-col items-center">
-                      <span className="text-white font-bold">
+                      <span className="font-medium">
                         Current Rating
                       </span>
-                      <span className="font-mono font-bold text-sm text-black">
+                      <span className="font-mono font-bold text-sm text-foreground">
                         {you?.codeforces_info.rating}
                       </span>
                     </div>
                     <div className="flex flex-col items-center">
-                      <span className="text-white font-bold">Status</span>
-                      <span className="font-mono font-bold text-sm text-black">
+                      <span className="font-medium">Status</span>
+                      <span className="font-mono font-bold text-sm text-foreground">
                         {isReady ? "Ready" : "Waiting"}
                       </span>
                     </div>
@@ -254,7 +254,7 @@ export default function MatchingPage() {
                   </div>
                 </div>
                 <div>
-                  <h4 className="font-semibold text-black">
+                  <h4 className="font-semibold text-foreground">
                     {opponent?.username}
                   </h4>
                   <p className="text-muted-foreground text-xs">
@@ -264,16 +264,16 @@ export default function MatchingPage() {
                 <div className="bg-muted/30 rounded-lg p-2">
                   <div className="flex justify-evenly text-xs text-muted-foreground">
                     <div className="flex flex-col items-center">
-                      <span className="text-white font-bold">
+                      <span className="font-medium">
                         Current Rating
                       </span>
-                      <span className="font-mono font-bold text-sm text-black">
+                      <span className="font-mono font-bold text-sm text-foreground">
                         {opponent?.codeforces_info.rating}
                       </span>
                     </div>
                     <div className="flex flex-col items-center">
-                      <span className="text-white font-bold">Status</span>
-                      <span className="font-mono font-bold text-sm text-black">
+                      <span className="font-medium">Status</span>
+                      <span className="font-mono font-bold text-sm text-foreground">
                         {opponentReady ? "Ready" : "Waiting"}
                       </span>
                     </div>
@@ -313,7 +313,7 @@ export default function MatchingPage() {
             <div className="bg-gradient-to-r from-muted/50 to-muted/30 rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-center space-x-2">
                 <Users className="h-4 w-4 text-primary" />
-                <h3 className="font-semibold text-sm">Battle Information</h3>
+                <h3 className="font-semibold text-sm text-foreground">Battle Information</h3>
               </div>
 
               <div className="text-center space-y-2">
@@ -321,25 +321,25 @@ export default function MatchingPage() {
                   <div className="flex items-center space-x-2">
                     <div
                       className={`w-3 h-3 rounded-full ${
-                        isReady ? "bg-green-500" : "bg-gray-300"
+                        isReady ? "bg-green-500" : "bg-muted-foreground/30"
                       }`}
                     ></div>
-                    <span className="text-xs text-slate-200 font-bold">
+                    <span className="text-xs text-muted-foreground font-semibold">
                       You
                     </span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <div
                       className={`w-3 h-3 rounded-full ${
-                        opponentReady ? "bg-green-500" : "bg-gray-300"
+                        opponentReady ? "bg-green-500" : "bg-muted-foreground/30"
                       }`}
                     ></div>
-                    <span className="text-xs text-slate-200 font-bold">
+                    <span className="text-xs text-muted-foreground font-semibold">
                       Opponent
                     </span>
                   </div>
                 </div>
-                <p className="text-xs text-white font-bold">
+                <p className="text-xs text-muted-foreground font-medium">
                   Both players must be ready to start the match
                 </p>
               </div>
@@ -383,7 +383,7 @@ export default function MatchingPage() {
         setOpen={setIsAlertOpen}
         message={alertMessage}
       />
-      <Card className="w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-[30rem] bg-white z-50 relative shadow-2xl">
+      <Card className="w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-[30rem] bg-card text-card-foreground border border-border z-50 relative shadow-2xl">
         <CardContent className="p-4 sm:p-6 md:p-8 text-center space-y-4 sm:space-y-6">
           <div className="relative">
             <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 mx-auto mb-4 sm:mb-6 relative">

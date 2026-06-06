@@ -80,7 +80,7 @@ export const useVerifyCodeforcesHandle = () => {
 
 //Helps in updating Codeforces info in the mongodb after user object is stored in redux with states fro ui management
 export const useUpdateCodeforcesInfo = () => {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ResponseType | null>(null);
   const { getToken } = useAuth();
 
@@ -109,6 +109,7 @@ export const useUpdateCodeforcesInfo = () => {
             success: true,
             isError: false,
             message: data.message,
+            data: data.data,
           }
         : {
             success: false,

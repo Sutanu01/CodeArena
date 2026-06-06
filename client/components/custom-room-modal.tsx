@@ -186,7 +186,7 @@ function PlayerCard({ isUser, isJoined, isReady, User }: PlayerCardProps) {
         <div className="flex justify-evenly text-xs text-muted-foreground">
           <div className="flex flex-col items-center">
             <span>Current Rating</span>
-            <span className="font-mono font-bold text-sm text-black">
+            <span className="font-mono font-bold text-sm text-foreground">
               {isUser
                 ? UserData?.codeforces_info.rating
                 : isJoined
@@ -198,7 +198,7 @@ function PlayerCard({ isUser, isJoined, isReady, User }: PlayerCardProps) {
             <span>Status</span>
             <span
               className={`font-mono font-bold text-sm ${
-                isReady ? "text-green-600" : "text-black"
+                isReady ? "text-green-600" : "text-foreground"
               }`}
             >
               {isUser
