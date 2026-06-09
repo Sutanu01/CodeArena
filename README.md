@@ -1,12 +1,12 @@
 # CodeArena
 
-A high-performance, real-time 1v1 competitive programming platform. CodeArena pairs developers in ELO-balanced match queues, runs sandboxed code executions against test suites, and tracks progress via dynamic user dashboards.
+A real-time 1v1 competitive programming platform. CodeArena pairs coders in ELO-balanced match queues, serves Codeforces problems for head-to-head battles, provides a sandboxed daily practice environment with test-case evaluation, and tracks progress via dynamic user dashboards.
 
 ---
 
 ## Technical Specifications and Architecture
 
-CodeArena is built on a decoupled, event-driven architecture designed for low latency, high concurrency, and horizontal scalability. The system separates HTTP APIs, stateful WebSocket communication, and heavy processing tasks into distinct, optimized layers.
+CodeArena is built on a decoupled, event-driven architecture designed for low latency, high concurrency, and horizontal scalability. The system separates HTTP APIs, stateful WebSocket communication, and heavy processing tasks into distinct layers. The 1v1 battle system operates entirely through WebSockets and Codeforces problem links, while the Practice mode offloads code compilation to an async queue backed by Judge0.
 
 ```mermaid
 graph TD
@@ -47,18 +47,18 @@ graph TD
 | :--- | :--- | :--- |
 | **Client Interface** | User dashboard, active match rooms, visual charts, live matchmaking interfaces, and daily puzzle workspaces. | Next.js, React, Tailwind CSS, Redux Toolkit, Recharts |
 | **API Gateway** | REST API handling user profiles, leaderboard generation, static questions, and submission queries. | Node.js, Express.js, TypeScript |
-| **Real-time Server** | Stateful WebSocket server managing matchmaking lobbies, custom room synchronizations, and match states. | Socket.IO, custom MatchMaker engine |
+| **Real-time Server** | Stateful WebSocket server managing matchmaking lobbies, custom room synchronizations, and match states. 1v1 battles serve Codeforces problem links and track match results (win/loss/draw) without any sandboxed execution. | Socket.IO, custom MatchMaker engine |
 | **Shared Cache & Queue** | Distributed job queue storage, real-time message replication, rate-limiting tokens, and matchmaking active session maps. | Upstash Redis, BullMQ |
-| **Task Processors** | Background worker threads running sandboxed code compilation, input verification, and db stats updates. | BullMQ Workers |
-| **Code Sandbox** | Remote code execution environment running submissions in isolated secure runtimes. | Judge0 API |
+| **Task Processors** | Background worker threads handling Practice mode submissions: sandboxed code compilation, test-case verification, and stats updates. Not used for 1v1 battles. | BullMQ Workers |
+| **Code Sandbox** | Remote code execution environment for Practice / Daily Puzzle submissions only. Runs user code in isolated secure runtimes against predefined test cases. | Judge0 API |
 | **Database** | Persistent storage of users, ratings, submission logs, and coding challenges. | MongoDB, Mongoose |
 
 ---
 
 ## Core Systems and Scalability Design
 
-### Asynchronous Execution Pipeline (BullMQ)
-Code compilation and test suite evaluations are computational tasks that shouldn't block the main Express server loop. CodeArena decouples code execution through a Redis-backed queue system:
+### Asynchronous Execution Pipeline (BullMQ) — Practice Mode Only
+The Daily Puzzle / Practice workspace lets users write and run code against predefined test cases. These compilation and evaluation tasks shouldn't block the main Express server loop, so CodeArena decouples them through a Redis-backed queue system. This pipeline is not used for 1v1 battles, which rely on Codeforces problem links instead.
 * **Decoupled Request Loop**: Handlers validate submission requests and push execution payloads into a `submissions` queue, returning a `202 Accepted` status with a `jobId`.
 * **State Polling**: The client polls `/api/practice/status/:jobId` to retrieve execution state.
 * **Worker Execution**: Dedicated background worker threads pull jobs from Redis, submit test cases to the Judge0 sandbox, verify stdout differences, persist execution logs in MongoDB, and mark jobs as completed.
