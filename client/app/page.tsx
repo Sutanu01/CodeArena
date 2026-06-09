@@ -34,13 +34,13 @@ while low <= high:
   {
     title: "fibonacci.py",
     code: `# 3. Fibonacci Recursion
-def fibonacci(n):
+def fibo(n):
     if n <= 1:
         return n
-    return fibonacci(n - 1) + fibonacci(n - 2)
+    return fibo(n - 1) + fibo(n - 2)
 
 # Get 10th fibonacci number
-result = fibonacci(10)`,
+result = fibo(10)`,
     lang: "python"
   },
   {
@@ -114,7 +114,7 @@ function CodeBlock({ code, title, isOffset }: { code: string; title: string; isO
           elements.push(<span key={tokenIndex} className="text-amber-500 dark:text-amber-400">{token}</span>);
         } else if (keywords.includes(token)) {
           elements.push(<span key={tokenIndex} className="text-pink-600 dark:text-pink-400 font-bold">{token}</span>);
-        } else if (token === "print" || token === "greet_world" || token === "fibonacci" || token === "dfs") {
+        } else if (token === "print" || token === "greet_world" || token === "fibo" || token === "dfs") {
           elements.push(<span key={tokenIndex} className="text-blue-600 dark:text-blue-400">{token}</span>);
         } else {
           elements.push(token);
